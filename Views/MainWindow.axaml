@@ -1,0 +1,32 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:RequesterMini.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="RequesterMini.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="RequesterMini">
+
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+  <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+         <ComboBox   ItemsSource="{Binding HttpMethods}" SelectedItem="{Binding SelectedHttpMethod, Mode=TwoWay}" Height="30" Width="200"/>
+         <TextBox Text="{Binding Url}" Width="300" Watermark="Enter URL here"/>
+             <TextBox Text="{Binding Body}" AcceptsReturn="True" Height="100" Width="300" Watermark="Enter request body here" TextWrapping="Wrap"/>
+             <ComboBox ItemsSource="{Binding BodyTypes}" SelectedItem="{Binding SelectedBodyType, Mode=TwoWay}" Height="30" Width="200"/>
+        <Button Content="Send Request" HorizontalAlignment="Center" Command="{Binding ClickCommand}"/>
+        
+        <TextBox Text="{Binding ResponseBody, Mode=TwoWay}" AcceptsReturn="True" Height="100" Width="300" Watermark="ResponseBody" TextWrapping="Wrap"/>
+       <TextBlock  Text="{Binding ResponseStatusCode, Mode=TwoWay}"
+                   FontSize="20"
+                   FontWeight="Bold"
+                   TextAlignment="Center"/>
+    </StackPanel>
+
+</Window>
