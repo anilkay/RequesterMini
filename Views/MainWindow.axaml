@@ -8,7 +8,20 @@
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
         Title="RequesterMini">
-
+     <Window.Styles>
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="#007BFF"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#007BFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+    </Window.Styles>
     <Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,
              to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
@@ -33,7 +46,9 @@
          <TextBox HorizontalAlignment="Stretch" Text="{Binding Url}" Watermark="Enter URL here"/>
              <TextBox HorizontalAlignment="Stretch" Text="{Binding Body}" AcceptsReturn="True" Height="100" Watermark="Enter request body here" TextWrapping="Wrap"/>
              <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding BodyTypes}" SelectedItem="{Binding SelectedBodyType, Mode=TwoWay}" Height="30"/>
-        <Button Content="Send Request" Command="{Binding ClickCommand}" HorizontalAlignment="Stretch"/>
+        <Button Classes="primary"  Command="{Binding ClickCommand}" HorizontalAlignment="Stretch">
+                <TextBlock Text="Send Request" TextAlignment="Center" VerticalAlignment="Center"/>
+        </Button>
         
         <TextBox HorizontalAlignment="Stretch" Text="{Binding ResponseBody, Mode=TwoWay}" AcceptsReturn="True" Height="100"  Watermark="ResponseBody" TextWrapping="Wrap"/>
        <TextBlock  Text="{Binding ResponseStatusCode, Mode=TwoWay}"
