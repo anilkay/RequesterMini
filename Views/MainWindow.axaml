@@ -14,19 +14,32 @@
              to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainWindowViewModel/>
     </Design.DataContext>
-
-  <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-         <ComboBox   ItemsSource="{Binding HttpMethods}" SelectedItem="{Binding SelectedHttpMethod, Mode=TwoWay}" Height="30" Width="200"/>
-         <TextBox Text="{Binding Url}" Width="300" Watermark="Enter URL here"/>
-             <TextBox Text="{Binding Body}" AcceptsReturn="True" Height="100" Width="300" Watermark="Enter request body here" TextWrapping="Wrap"/>
-             <ComboBox ItemsSource="{Binding BodyTypes}" SelectedItem="{Binding SelectedBodyType, Mode=TwoWay}" Height="30" Width="200"/>
-        <Button Content="Send Request" HorizontalAlignment="Center" Command="{Binding ClickCommand}"/>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="0.25*"/>
+            <ColumnDefinition Width="0.5*"/>
+            <ColumnDefinition Width="0.25*"/>
+        </Grid.ColumnDefinitions>
+  <StackPanel Grid.Column="1" VerticalAlignment="Center">
+           <StackPanel.Styles>
+            <Style Selector="ComboBox">
+                <Setter Property="Margin" Value="10"/>
+            </Style>
+             <Style Selector="TextBox">
+                <Setter Property="Margin" Value="10"/>
+            </Style>
+        </StackPanel.Styles>
+         <ComboBox   ItemsSource="{Binding HttpMethods}" SelectedItem="{Binding SelectedHttpMethod, Mode=TwoWay}" Height="30" HorizontalAlignment="Stretch"/>
+         <TextBox HorizontalAlignment="Stretch" Text="{Binding Url}" Watermark="Enter URL here"/>
+             <TextBox HorizontalAlignment="Stretch" Text="{Binding Body}" AcceptsReturn="True" Height="100" Watermark="Enter request body here" TextWrapping="Wrap"/>
+             <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding BodyTypes}" SelectedItem="{Binding SelectedBodyType, Mode=TwoWay}" Height="30"/>
+        <Button Content="Send Request" Command="{Binding ClickCommand}" HorizontalAlignment="Stretch"/>
         
-        <TextBox Text="{Binding ResponseBody, Mode=TwoWay}" AcceptsReturn="True" Height="100" Width="300" Watermark="ResponseBody" TextWrapping="Wrap"/>
+        <TextBox HorizontalAlignment="Stretch" Text="{Binding ResponseBody, Mode=TwoWay}" AcceptsReturn="True" Height="100"  Watermark="ResponseBody" TextWrapping="Wrap"/>
        <TextBlock  Text="{Binding ResponseStatusCode, Mode=TwoWay}"
                    FontSize="20"
                    FontWeight="Bold"
                    TextAlignment="Center"/>
     </StackPanel>
-
+    </Grid>
 </Window>
