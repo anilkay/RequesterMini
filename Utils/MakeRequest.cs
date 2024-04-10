@@ -10,12 +10,15 @@ public class MakeRequest {
     private readonly string MethodBody;
     private readonly  string MethodBodyType;
 
+    private readonly HttpClient HttpClient;
+
     private readonly string Url;
 
     //Generate Constructor with All
 
-    public MakeRequest(string httpMethod,string methodBody,string methodBodyType,string url)
+    public MakeRequest(HttpClient httpClient,string httpMethod,string methodBody,string methodBodyType,string url)
     {
+        HttpClient=httpClient;
         HtttpMethod=httpMethod;
         MethodBody=methodBody;
         MethodBodyType=methodBodyType;
@@ -26,7 +29,6 @@ public class MakeRequest {
 
     public async  Task<(string statusCode,string response, DateTime? FinishedTime)> Execute()
     {
-        HttpClient httpClient=new HttpClient();
         //Cautious This Leads to Socker Starvation
 
         HttpMethod method = new HttpMethod(HtttpMethod);
@@ -57,7 +59,7 @@ public class MakeRequest {
         
 
         // İsteği gönder ve yanıtı al
-        var response = await httpClient.SendAsync(request);
+        var response = await HttpClient.SendAsync(request);
 
         string responseContent = await response.Content.ReadAsStringAsync();
 

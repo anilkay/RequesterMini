@@ -3,11 +3,18 @@ using System.Reactive;
 using ReactiveUI;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Net.Http;
 
 namespace RequesterMini.ViewModels;
 
 public class MainWindowViewModel : ViewModelBase
 {
+    private readonly HttpClient _httpClient;
+   public  MainWindowViewModel(HttpClient httpClient):this()
+    {
+        _httpClient = httpClient;
+    }
+
     public ReactiveCommand<Unit, Unit> ClickCommand { get; }
     public   ObservableCollection<string> HttpMethods { get; } = new ObservableCollection<string>
      { "GET", "POST", "PUT", "DELETE", "PATCH"};
@@ -63,8 +70,8 @@ public class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
-        ClickCommand = ReactiveCommand.CreateFromTask(async () => { 
-            MakeRequest makeRequest=new MakeRequest(SelectedHttpMethod,Body,SelectedBodyType,Url);
+        ClickCommand = ReactiveCommand.CreateFromTask(async () => {
+            MakeRequest makeRequest=new MakeRequest(_httpClient,SelectedHttpMethod,Body,SelectedBodyType,Url);
              (var statusCode,var response,_)=await makeRequest.Execute();
 
              ResponseBody=response;
