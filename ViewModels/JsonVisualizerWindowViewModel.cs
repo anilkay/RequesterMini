@@ -14,6 +14,13 @@ public class JsonVisulizerWindowViewModel : ViewModelBase
     public JsonVisulizerWindowViewModel(){
         MessageBus.Current.Listen<string>("newjson").Subscribe(value => 
         {
+
+
+            if(value==null)
+            {
+                return;
+            }
+
             JsonSerializerOptions options = new JsonSerializerOptions
             {
                 WriteIndented = false,
@@ -21,10 +28,16 @@ public class JsonVisulizerWindowViewModel : ViewModelBase
                 PropertyNameCaseInsensitive = true
 
             };
+            try {
             var deserialized=JsonSerializer.Deserialize<JsonElement>(value,options );
             string prettySerialized=JsonSerializer.Serialize(deserialized, options);
-            
+
             PrettyJsonValue=prettySerialized;
+        }
+        catch(JsonException e)
+        {
+            PrettyJsonValue=e.Message;
+        }
         });
     }
     public string JsonValue { get; set; } = "hey";
