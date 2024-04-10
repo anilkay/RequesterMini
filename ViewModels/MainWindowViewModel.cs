@@ -77,7 +77,9 @@ public class MainWindowViewModel : ViewModelBase
              ResponseBody=response;
              ResponseStatusCode=statusCode;
 
-             Console.WriteLine(ResponseBody);
+             MessageBus.Current.SendMessage(ResponseBody,"newjson");
+
+             //Console.WriteLine(ResponseBody);
 
              });
     }
