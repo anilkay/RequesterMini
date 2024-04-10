@@ -21,9 +21,9 @@ public class JsonVisulizerWindowViewModel : ViewModelBase
                 PropertyNameCaseInsensitive = true
 
             };
-
-            string prettySerialized=JsonSerializer.Serialize(value, options);
-            //Do Nothing
+            var deserialized=JsonSerializer.Deserialize<JsonElement>(value,options );
+            string prettySerialized=JsonSerializer.Serialize(deserialized, options);
+            
             PrettyJsonValue=prettySerialized;
         });
     }
