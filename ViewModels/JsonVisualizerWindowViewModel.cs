@@ -16,12 +16,14 @@ public class JsonVisulizerWindowViewModel : ViewModelBase
         {
             JsonSerializerOptions options = new JsonSerializerOptions
             {
-                WriteIndented = true,
-                AllowTrailingCommas = true,
+                WriteIndented = false,
+                AllowTrailingCommas = false,
                 PropertyNameCaseInsensitive = true
 
             };
+
             string prettySerialized=JsonSerializer.Serialize(value, options);
+            //Do Nothing
             PrettyJsonValue=prettySerialized;
         });
     }

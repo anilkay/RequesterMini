@@ -79,7 +79,7 @@ public class MainWindowViewModel : ViewModelBase
 
              MessageBus.Current.SendMessage(ResponseBody,"newjson");
 
-             Console.WriteLine(ResponseBody);
+             //Console.WriteLine(ResponseBody);
 
              });
     }
