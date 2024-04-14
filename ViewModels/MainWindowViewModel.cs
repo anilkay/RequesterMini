@@ -4,6 +4,7 @@ using ReactiveUI;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Net.Http;
+using RequesterMini.Constants;
 
 namespace RequesterMini.ViewModels;
 
@@ -15,30 +16,29 @@ public class MainWindowViewModel : ViewModelBase
         _httpClient = httpClient;
     }
 
-    public ReactiveCommand<Unit, Unit> ClickCommand { get; }
-    public   ObservableCollection<string> HttpMethods { get; } = new ObservableCollection<string>
-     { "GET", "POST", "PUT", "DELETE", "PATCH"};
-    
-
-    public ObservableCollection<string> BodyTypes { get; } = new ObservableCollection<string> { "Json", "Xml", "Form", "TEXT" };
-   
-     public string SelectedBodyType { get; set; } = "Json";
+    internal ReactiveCommand<Unit, Unit> ClickCommand { get; }
+    internal ObservableCollection<string> HttpMethods { get; } = new ObservableCollection<string>(HttpConstants.MethodValues);
 
 
-    public int SelectedIndex { get; set; } = 0;
+
+    internal ObservableCollection<string> BodyTypes { get; } = new ObservableCollection<string>(HttpConstants.BodyTypeValues);
+
+    internal string SelectedBodyType { get; set; } = HttpConstants.SelectedBodyType;
 
 
-    public string _selectedHttpMethod="GET";
 
-    public string Url { get; set; } = "https://jsonplaceholder.typicode.com/posts/1";
 
-    public string Body { get; set; } = "";
+    internal string _selectedHttpMethod = HttpConstants.SelectedMethod;
+
+    internal string Url { get; set; } = HttpConstants.StartUrl;
+
+    internal string Body { get; set; } = "";
 
     private string _responseStatusCode="";
 
 
 
-    public string ResponseStatusCode{
+    internal string ResponseStatusCode{
         get=>_responseStatusCode;
         set {
             this.RaiseAndSetIfChanged(ref 
@@ -48,7 +48,7 @@ public class MainWindowViewModel : ViewModelBase
 
     private string _responseBody="";
 
-    public string ResponseBody{
+    internal string ResponseBody{
         get =>_responseBody;
         set {
             Console.WriteLine(value);
@@ -56,7 +56,7 @@ public class MainWindowViewModel : ViewModelBase
         }
     }
     
-    public string SelectedHttpMethod {
+    internal string SelectedHttpMethod {
         get => _selectedHttpMethod;
         set  {
             Console.WriteLine("SelectedHttpMethod set to: " + value);
@@ -77,7 +77,7 @@ public class MainWindowViewModel : ViewModelBase
              ResponseBody=response;
              ResponseStatusCode=statusCode;
 
-             MessageBus.Current.SendMessage(ResponseBody,"newjson");
+             MessageBus.Current.SendMessage(ResponseBody,MessageBusConstants.NewJsonGenerated);
 
              //Console.WriteLine(ResponseBody);
 

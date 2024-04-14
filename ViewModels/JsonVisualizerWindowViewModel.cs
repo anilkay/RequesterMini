@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Net.Http;
 using System.Text.Json;
+using RequesterMini.Constants;
 
 namespace RequesterMini.ViewModels;
 
@@ -12,7 +13,7 @@ public class JsonVisulizerWindowViewModel : ViewModelBase
 {
 
     public JsonVisulizerWindowViewModel(){
-        MessageBus.Current.Listen<string>("newjson").Subscribe(value => 
+        MessageBus.Current.Listen<string>(MessageBusConstants.NewJsonGenerated).Subscribe(value => 
         {
 
 
@@ -40,7 +41,6 @@ public class JsonVisulizerWindowViewModel : ViewModelBase
         }
         });
     }
-    public string JsonValue { get; set; } = "hey";
 
     private string _prettyJsonValue = "";
 
