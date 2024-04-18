@@ -9,5 +9,6 @@ namespace RequesterMini.Constants
     internal class MessageBusConstants
     {
         internal static readonly string NewJsonGenerated = "newjson";
+        internal static readonly string NewRequest = "newrequest";
     }
 }
