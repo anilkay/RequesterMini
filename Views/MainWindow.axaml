@@ -34,6 +34,9 @@
             <ColumnDefinition Width="0.5*"/>
             <ColumnDefinition Width="0.25*"/>
         </Grid.ColumnDefinitions>
+        <StackPanel Grid.Column="0" VerticalAlignment= "Center"> 
+            <views:OldRequestWindow/>
+            </StackPanel>
   <StackPanel Grid.Column="1" VerticalAlignment="Center">
            <StackPanel.Styles>
             <Style Selector="ComboBox">
