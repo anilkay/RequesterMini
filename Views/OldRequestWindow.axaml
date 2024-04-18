@@ -1,0 +1,48 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:viewmodels="clr-namespace:Uygulama.ViewModels"
+             xmlns:vm="using:RequesterMini.ViewModels"
+             mc:Ignorable="d"
+             x:DataType="vm:OldRequestsWindowViewModel"
+             x:Class="RequesterMini.Views.OldRequestWindow">
+               <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:OldRequestsWindowViewModel/>
+    </Design.DataContext>
+    
+    <StackPanel>
+        <ItemsControl ItemsSource="{Binding OldRequests}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <!-- Her bir öğe için TextBlock içinde göster -->
+                  <StackPanel>
+                    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="0.20*"/>
+            <ColumnDefinition Width="0.80*"/>
+        </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" BorderBrush="Black"
+            BorderThickness="2"
+            Background="LightGreen"
+            CornerRadius="5"
+            Padding="10">
+           
+                    <TextBlock  Text="{Binding Method}"/>
+                    </Border>
+                     <Border Grid.Column="1"  BorderBrush="Black"
+            BorderThickness="2"
+            Background="LightBlue"
+            CornerRadius="5"
+            Padding="10">
+                    <TextBlock Text="{Binding Url}" />
+                    </Border>
+                    </Grid>
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

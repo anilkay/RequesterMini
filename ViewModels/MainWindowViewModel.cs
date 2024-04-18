@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Net.Http;
 using RequesterMini.Constants;
+using System.Text.Json;
 
 namespace RequesterMini.ViewModels;
 
@@ -78,6 +79,10 @@ public class MainWindowViewModel : ViewModelBase
              ResponseStatusCode=statusCode;
 
              MessageBus.Current.SendMessage(ResponseBody,MessageBusConstants.NewJsonGenerated);
+
+             var OldRequestDto=new OldRequestDto(SelectedHttpMethod,Url,Body,ResponseStatusCode,ResponseBody);
+
+             MessageBus.Current.SendMessage(JsonSerializer.Serialize(OldRequestDto),MessageBusConstants.NewRequest);
 
              //Console.WriteLine(ResponseBody);
 

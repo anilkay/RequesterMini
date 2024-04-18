@@ -30,10 +30,13 @@
     </Design.DataContext>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="0.25*"/>
-            <ColumnDefinition Width="0.5*"/>
-            <ColumnDefinition Width="0.25*"/>
+            <ColumnDefinition Width="0.40*"/>
+            <ColumnDefinition Width="0.50*"/>
+            <ColumnDefinition Width="0.10*"/>
         </Grid.ColumnDefinitions>
+        <StackPanel Grid.Column="0" VerticalAlignment= "Center"> 
+            <views:OldRequestWindow/>
+            </StackPanel>
   <StackPanel Grid.Column="1" VerticalAlignment="Center">
            <StackPanel.Styles>
             <Style Selector="ComboBox">
