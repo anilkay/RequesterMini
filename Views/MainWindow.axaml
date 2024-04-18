@@ -30,9 +30,9 @@
     </Design.DataContext>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="0.30*"/>
             <ColumnDefinition Width="0.40*"/>
-            <ColumnDefinition Width="0.30*"/>
+            <ColumnDefinition Width="0.50*"/>
+            <ColumnDefinition Width="0.10*"/>
         </Grid.ColumnDefinitions>
         <StackPanel Grid.Column="0" VerticalAlignment= "Center"> 
             <views:OldRequestWindow/>
