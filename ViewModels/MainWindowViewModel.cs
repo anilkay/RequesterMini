@@ -79,6 +79,8 @@ public class MainWindowViewModel : ViewModelBase
 
              MessageBus.Current.SendMessage(ResponseBody,MessageBusConstants.NewJsonGenerated);
 
+             MessageBus.Current.SendMessage(Url,"newrequest");
+
              //Console.WriteLine(ResponseBody);
 
              });
