@@ -9,7 +9,11 @@ using System.Text.Json;
 namespace RequesterMini.ViewModels;
 
 
-public record OldRequestDto(string Method, string Url, string Body, string ResponseStatusCode, string ResponseBody);
+public record OldRequestDto(string Method, string Url, string Body, string ResponseStatusCode, string ResponseBody)
+{
+   
+}
+
 
 public class OldRequestsWindowViewModel : ViewModelBase
 {
@@ -22,8 +26,19 @@ public class OldRequestsWindowViewModel : ViewModelBase
             {
                 return;
             }
-            var oldReuqestObject=JsonSerializer.Deserialize<OldRequestDto>(value);
-            OldRequests.Add(oldReuqestObject);
+            try
+            {
+                var oldRequestJson = Newtonsoft.Json.Linq.JToken.Parse(value);
+
+                OldRequestDto oldRequestDto = new OldRequestDto(oldRequestJson.Value<string>("Method"), oldRequestJson.Value<string>("Url"),"","","");
+
+                OldRequests.Add(oldRequestDto);
+            }
+            catch(Exception ex)
+            {
+                var dto = new OldRequestDto("Get",ex.ToString(),"","","");
+                OldRequests.Add(dto);
+            }
         });
     }
 

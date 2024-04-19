@@ -22,18 +22,20 @@ public class JsonVisulizerWindowViewModel : ViewModelBase
                 return;
             }
 
-            JsonSerializerOptions options = new JsonSerializerOptions
-            {
-                WriteIndented = false,
-                AllowTrailingCommas = false,
-                PropertyNameCaseInsensitive = true
+            //JsonSerializerOptions options = new JsonSerializerOptions
+            //{
+            //    WriteIndented = false,
+            //    AllowTrailingCommas = false,
+            //    PropertyNameCaseInsensitive = true
 
-            };
+            //};
             try {
-            var deserialized=JsonSerializer.Deserialize<JsonElement>(value,options );
-            string prettySerialized=JsonSerializer.Serialize(deserialized, options);
+                var deserialized = Newtonsoft.Json.Linq.JToken.Parse(value);
+                string prettySerialized = deserialized.ToString(Newtonsoft.Json.Formatting.None);
 
-            PrettyJsonValue=prettySerialized;
+
+
+                PrettyJsonValue = prettySerialized;
         }
         catch(JsonException e)
         {

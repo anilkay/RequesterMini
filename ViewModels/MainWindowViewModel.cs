@@ -81,8 +81,7 @@ public class MainWindowViewModel : ViewModelBase
              MessageBus.Current.SendMessage(ResponseBody,MessageBusConstants.NewJsonGenerated);
 
              var OldRequestDto=new OldRequestDto(SelectedHttpMethod,Url,Body,ResponseStatusCode,ResponseBody);
-
-             MessageBus.Current.SendMessage(JsonSerializer.Serialize(OldRequestDto),MessageBusConstants.NewRequest);
+             MessageBus.Current.SendMessage(Newtonsoft.Json.JsonConvert.SerializeObject(OldRequestDto),MessageBusConstants.NewRequest);
 
              //Console.WriteLine(ResponseBody);
 
