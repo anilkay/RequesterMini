@@ -11,7 +11,7 @@ namespace RequesterMini.ViewModels;
 
 public class MainWindowViewModel : ViewModelBase
 {
-    private readonly HttpClient _httpClient;
+    private readonly HttpClient? _httpClient;
    public  MainWindowViewModel(HttpClient httpClient):this()
     {
         _httpClient = httpClient;
@@ -72,6 +72,11 @@ public class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel()
     {
         ClickCommand = ReactiveCommand.CreateFromTask(async () => {
+
+            if(_httpClient is null){
+                return;
+            }
+
             MakeRequest makeRequest=new MakeRequest(_httpClient,SelectedHttpMethod,Body,SelectedBodyType,Url);
              (var statusCode,var response,_)=await makeRequest.Execute();
 
