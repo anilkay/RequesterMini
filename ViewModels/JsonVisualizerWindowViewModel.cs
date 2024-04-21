@@ -30,10 +30,8 @@ public class JsonVisulizerWindowViewModel : ViewModelBase
 
             };
             try {
-            var deserialized=JsonSerializer.Deserialize<JsonElement>(value,options );
-            string prettySerialized=JsonSerializer.Serialize(deserialized, options);
 
-            PrettyJsonValue=prettySerialized;
+            PrettyJsonValue=value;
         }
         catch(JsonException e)
         {

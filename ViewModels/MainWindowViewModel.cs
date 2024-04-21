@@ -82,7 +82,7 @@ public class MainWindowViewModel : ViewModelBase
 
              var OldRequestDto=new OldRequestDto(SelectedHttpMethod,Url,Body,ResponseStatusCode,ResponseBody);
 
-             MessageBus.Current.SendMessage(JsonSerializer.Serialize(OldRequestDto),MessageBusConstants.NewRequest);
+             MessageBus.Current.SendMessage(JsonSerializer.Serialize(OldRequestDto,SourceGenerationContext.Default.OldRequestDto),MessageBusConstants.NewRequest);
 
              });
     }

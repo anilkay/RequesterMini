@@ -22,7 +22,7 @@ public class OldRequestsWindowViewModel : ViewModelBase
             {
                 return;
             }
-            var oldReuqestObject=JsonSerializer.Deserialize<OldRequestDto>(value);
+            var oldReuqestObject=JsonSerializer.Deserialize<OldRequestDto>(value,SourceGenerationContext.Default.OldRequestDto);
             OldRequests.Add(oldReuqestObject);
         });
     }
