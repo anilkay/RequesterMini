@@ -36,7 +36,7 @@ public class MakeRequest {
         var request = new HttpRequestMessage(method, Url);
 
                     HttpContent content;
-            switch (MethodBodyType.ToLower())
+            switch (MethodBodyType.ToLowerInvariant())
             {
                 case "json":
                     content = new StringContent(MethodBody, Encoding.UTF8, "application/json");

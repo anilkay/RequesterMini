@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace RequesterMini.Constants
 {
-    internal class HttpConstants
+    internal static class HttpConstants
     {
         internal static readonly List<string> BodyTypeValues = new List<string> { "Json", "Xml", "Form", "Text" };
         internal static readonly List<string> MethodValues = new List<string> { "GET", "POST", "PUT", "DELETE", "PATCH" };

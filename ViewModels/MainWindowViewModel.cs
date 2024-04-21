@@ -84,8 +84,6 @@ public class MainWindowViewModel : ViewModelBase
 
              MessageBus.Current.SendMessage(JsonSerializer.Serialize(OldRequestDto),MessageBusConstants.NewRequest);
 
-             //Console.WriteLine(ResponseBody);
-
              });
     }
 
