@@ -22,13 +22,7 @@ public class JsonVisulizerWindowViewModel : ViewModelBase
                 return;
             }
 
-            JsonSerializerOptions options = new JsonSerializerOptions
-            {
-                WriteIndented = false,
-                AllowTrailingCommas = false,
-                PropertyNameCaseInsensitive = true
-
-            };
+           
             try {
 
             PrettyJsonValue=value;
