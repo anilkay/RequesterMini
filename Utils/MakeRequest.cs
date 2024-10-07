@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
+namespace RequesterMini.Utils;
 public class MakeRequest {
     private readonly string HtttpMethod;
     private readonly string MethodBody;
