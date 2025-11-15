@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Net.Http;
 using System.Reflection;
@@ -14,64 +15,58 @@ public class MakeRequest {
     private readonly HttpClient HttpClient;
 
     private readonly string Url;
+    
+    private readonly Dictionary<string, string> Headers;
 
-    //Generate Constructor with All
-
-    public MakeRequest(HttpClient httpClient,string httpMethod,string methodBody,string methodBodyType,string url)
+    public MakeRequest(HttpClient httpClient,string httpMethod,string methodBody,string methodBodyType,string url, Dictionary<string, string> headers = null)
     {
         HttpClient=httpClient;
         HtttpMethod=httpMethod;
         MethodBody=methodBody;
         MethodBodyType=methodBodyType;
         Url=url;
-
-        
+        Headers=headers ?? new Dictionary<string, string>();
     }
 
     public async  Task<(string statusCode,string response, DateTime? FinishedTime)> Execute()
     {
-        //Cautious This Leads to Socker Starvation
-
         HttpMethod method = new HttpMethod(HtttpMethod);
 
         var request = new HttpRequestMessage(method, Url);
 
-                    HttpContent content;
-            switch (MethodBodyType.ToLowerInvariant())
+        // Add custom headers
+        foreach (var header in Headers)
+        {
+            if (!string.IsNullOrWhiteSpace(header.Key))
             {
-                case "json":
-                    content = new StringContent(MethodBody, Encoding.UTF8, "application/json");
-                    break;
-                case "xml":
-                    content = new StringContent(MethodBody, Encoding.UTF8, "application/xml");
-                    break;
-                case "form":
-                    // Form verisi için örnek bir dictionary kabul edildiğini varsayalım.
-                    // Gerçek uygulamada bu dictionary metin gövdesine göre uygun şekilde oluşturulmalıdır.
-                    var formData = new MultipartFormDataContent();
-                    formData.Add(new StringContent(MethodBody), "fieldName"); // Burada fieldName, form alan adınız olacaktır.
-                    content = formData;
-                    break;
-                default:
-                    content = new StringContent(MethodBody); // Varsayılan olarak düz metin olarak kabul edilir.
-                    break;
+                request.Headers.TryAddWithoutValidation(header.Key, header.Value);
             }
-            request.Content = content;
-        
+        }
 
-        // İsteği gönder ve yanıtı al
+        HttpContent content;
+        switch (MethodBodyType.ToLowerInvariant())
+        {
+            case "json":
+                content = new StringContent(MethodBody, Encoding.UTF8, "application/json");
+                break;
+            case "xml":
+                content = new StringContent(MethodBody, Encoding.UTF8, "application/xml");
+                break;
+            case "form":
+                var formData = new MultipartFormDataContent();
+                formData.Add(new StringContent(MethodBody), "fieldName");
+                content = formData;
+                break;
+            default:
+                content = new StringContent(MethodBody);
+                break;
+        }
+        request.Content = content;
+
         var response = await HttpClient.SendAsync(request);
 
         string responseContent = await response.Content.ReadAsStringAsync();
 
-
-
-
-        
         return (response.StatusCode.ToString(),responseContent,null);
-        
     }
-     
-
-   
 }
