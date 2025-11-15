@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Reactive;
 using ReactiveUI;
 using System.Collections.Generic;
@@ -19,16 +19,15 @@ public class MainWindowViewModel : ViewModelBase
     }
 
     internal ReactiveCommand<Unit, Unit> ClickCommand { get; }
+    internal ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
+    
     internal ObservableCollection<string> HttpMethods { get; } = new ObservableCollection<string>(HttpConstants.MethodValues);
-
-
 
     internal ObservableCollection<string> BodyTypes { get; } = new ObservableCollection<string>(HttpConstants.BodyTypeValues);
 
+    internal ObservableCollection<HeaderItem> Headers { get; } = new ObservableCollection<HeaderItem>();
+
     internal string SelectedBodyType { get; set; } = HttpConstants.SelectedBodyType;
-
-
-
 
     internal string _selectedHttpMethod = HttpConstants.SelectedMethod;
 
@@ -37,8 +36,6 @@ public class MainWindowViewModel : ViewModelBase
     internal string Body { get; set; } = "";
 
     private string _responseStatusCode="";
-
-
 
     internal string ResponseStatusCode{
         get=>_responseStatusCode;
@@ -65,19 +62,32 @@ public class MainWindowViewModel : ViewModelBase
             }
     }
 
-
-
-
-
     public MainWindowViewModel()
     {
+        AddHeaderCommand = ReactiveCommand.Create(() =>
+        {
+            var headerItem = new HeaderItem();
+            headerItem.OnRemove = RemoveHeader;
+            Headers.Add(headerItem);
+        });
+
         ClickCommand = ReactiveCommand.CreateFromTask(async () => {
 
             if(_httpClient is null){
                 return;
             }
 
-            MakeRequest makeRequest=new MakeRequest(_httpClient,SelectedHttpMethod,Body,SelectedBodyType,Url);
+            // Prepare headers dictionary
+            var headers = new Dictionary<string, string>();
+            foreach (var header in Headers)
+            {
+                if (header.IsEnabled && !string.IsNullOrWhiteSpace(header.Key))
+                {
+                    headers[header.Key] = header.Value;
+                }
+            }
+
+            MakeRequest makeRequest=new MakeRequest(_httpClient,SelectedHttpMethod,Body,SelectedBodyType,Url,headers);
              (var statusCode,var response,_)=await makeRequest.Execute();
 
              ResponseBody=response;
@@ -85,11 +95,16 @@ public class MainWindowViewModel : ViewModelBase
 
              MessageBus.Current.SendMessage(ResponseBody,MessageBusConstants.NewJsonGenerated);
 
-             var OldRequestDto=new OldRequestDto(SelectedHttpMethod,Url,Body,ResponseStatusCode,ResponseBody);
+             var OldRequestDto=new OldRequestDto(SelectedHttpMethod,Url,Body,ResponseStatusCode,ResponseBody,headers);
 
              MessageBus.Current.SendMessage(JsonSerializer.Serialize(OldRequestDto,SourceGenerationContext.Default.OldRequestDto),MessageBusConstants.NewRequest);
 
              });
+    }
+
+    private void RemoveHeader(HeaderItem header)
+    {
+        Headers.Remove(header);
     }
 
 }

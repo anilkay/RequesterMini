@@ -10,7 +10,7 @@ using RequesterMini.Utils;
 namespace RequesterMini.ViewModels;
 
 
-public record OldRequestDto(string Method, string Url, string Body, string ResponseStatusCode, string ResponseBody);
+public record OldRequestDto(string Method, string Url, string Body, string ResponseStatusCode, string ResponseBody, Dictionary<string, string> Headers);
 
 public class OldRequestsWindowViewModel : ViewModelBase
 {

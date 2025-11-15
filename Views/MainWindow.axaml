@@ -22,10 +22,26 @@
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
+        <Style Selector="Button.secondary">
+            <Setter Property="Background" Value="#6C757D"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#6C757D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="5,2"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="#DC3545"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#DC3545"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="5,2"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
     </Window.Styles>
     <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainWindowViewModel/>
     </Design.DataContext>
     <Grid>
@@ -36,30 +52,63 @@
         </Grid.ColumnDefinitions>
         <StackPanel Grid.Column="0" VerticalAlignment= "Center"> 
             <views:OldRequestWindow/>
+        </StackPanel>
+        <ScrollViewer Grid.Column="1" VerticalAlignment="Top">
+            <StackPanel>
+                <StackPanel.Styles>
+                    <Style Selector="ComboBox">
+                        <Setter Property="Margin" Value="10"/>
+                    </Style>
+                    <Style Selector="TextBox">
+                        <Setter Property="Margin" Value="10"/>
+                    </Style>
+                </StackPanel.Styles>
+                <ComboBox   ItemsSource="{Binding HttpMethods}" SelectedItem="{Binding SelectedHttpMethod, Mode=TwoWay}" Height="30" HorizontalAlignment="Stretch"/>
+                <TextBox HorizontalAlignment="Stretch" Text="{Binding Url}" Watermark="Enter URL here"/>
+                
+                <StackPanel Margin="10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Headers" FontWeight="Bold" FontSize="16" Grid.Column="0"/>
+                        <Button Classes="secondary" Command="{Binding AddHeaderCommand}" Grid.Column="1" Content="+ Add Header"/>
+                    </Grid>
+                    
+                    <ItemsControl ItemsSource="{Binding Headers}" Margin="0,5,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,5,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="30"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="1" Text="{Binding Key}" Watermark="Header Key" Margin="5,0"/>
+                                    <TextBox Grid.Column="2" Text="{Binding Value}" Watermark="Header Value" Margin="5,0"/>
+                                    <Button Grid.Column="3" Classes="danger" Content="X" Command="{Binding RemoveCommand}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+                
+                <TextBox HorizontalAlignment="Stretch" Text="{Binding Body}" AcceptsReturn="True" Height="100" Watermark="Enter request body here" TextWrapping="Wrap"/>
+                <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding BodyTypes}" SelectedItem="{Binding SelectedBodyType, Mode=TwoWay}" Height="30"/>
+                <Button Classes="primary"  Command="{Binding ClickCommand}" HorizontalAlignment="Stretch">
+                    <TextBlock Text="Send Request" TextAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
+                
+                <TextBox HorizontalAlignment="Stretch" Text="{Binding ResponseBody, Mode=TwoWay}" AcceptsReturn="True" Height="100"  Watermark="ResponseBody" TextWrapping="Wrap"/>
+                <TextBlock  Text="{Binding ResponseStatusCode, Mode=TwoWay}"
+                           FontSize="20"
+                           FontWeight="Bold"
+                           TextAlignment="Center"/>
+                <views:JsonVisulizerWindow />
             </StackPanel>
-  <StackPanel Grid.Column="1" VerticalAlignment="Center">
-           <StackPanel.Styles>
-            <Style Selector="ComboBox">
-                <Setter Property="Margin" Value="10"/>
-            </Style>
-             <Style Selector="TextBox">
-                <Setter Property="Margin" Value="10"/>
-            </Style>
-        </StackPanel.Styles>
-         <ComboBox   ItemsSource="{Binding HttpMethods}" SelectedItem="{Binding SelectedHttpMethod, Mode=TwoWay}" Height="30" HorizontalAlignment="Stretch"/>
-         <TextBox HorizontalAlignment="Stretch" Text="{Binding Url}" Watermark="Enter URL here"/>
-             <TextBox HorizontalAlignment="Stretch" Text="{Binding Body}" AcceptsReturn="True" Height="100" Watermark="Enter request body here" TextWrapping="Wrap"/>
-             <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding BodyTypes}" SelectedItem="{Binding SelectedBodyType, Mode=TwoWay}" Height="30"/>
-        <Button Classes="primary"  Command="{Binding ClickCommand}" HorizontalAlignment="Stretch">
-                <TextBlock Text="Send Request" TextAlignment="Center" VerticalAlignment="Center"/>
-        </Button>
-        
-        <TextBox HorizontalAlignment="Stretch" Text="{Binding ResponseBody, Mode=TwoWay}" AcceptsReturn="True" Height="100"  Watermark="ResponseBody" TextWrapping="Wrap"/>
-       <TextBlock  Text="{Binding ResponseStatusCode, Mode=TwoWay}"
-                   FontSize="20"
-                   FontWeight="Bold"
-                   TextAlignment="Center"/>
-        <views:JsonVisulizerWindow />
-    </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Window>
