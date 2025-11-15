@@ -61,7 +61,6 @@ public class MainWindowViewModel : ViewModelBase
     internal string SelectedHttpMethod {
         get => _selectedHttpMethod;
         set  {
-            Console.WriteLine("SelectedHttpMethod set to: " + value);
             this.RaiseAndSetIfChanged(ref _selectedHttpMethod, value);
             }
     }
