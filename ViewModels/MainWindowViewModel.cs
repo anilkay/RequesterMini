@@ -29,20 +29,20 @@ public class MainWindowViewModel : ViewModelBase
 
     internal string SelectedBodyType { get; set; } = HttpConstants.SelectedBodyType;
 
-    internal string _selectedHttpMethod = HttpConstants.SelectedMethod;
 
     internal string Url { get; set; } = HttpConstants.StartUrl;
 
     internal string Body { get; set; } = "";
 
     private string _responseStatusCode="";
+    private string _selectedHttpMethod = HttpConstants.SelectedMethod;
+
 
     internal string ResponseStatusCode{
         get=>_responseStatusCode;
-        set {
+        set =>
             this.RaiseAndSetIfChanged(ref 
-            _responseStatusCode,value);
-        }
+                _responseStatusCode,value);
     }
 
     private string _responseBody="";
@@ -57,9 +57,7 @@ public class MainWindowViewModel : ViewModelBase
     
     internal string SelectedHttpMethod {
         get => _selectedHttpMethod;
-        set  {
-            this.RaiseAndSetIfChanged(ref _selectedHttpMethod, value);
-            }
+        set => this.RaiseAndSetIfChanged(ref _selectedHttpMethod, value);
     }
 
     public MainWindowViewModel()
@@ -95,9 +93,9 @@ public class MainWindowViewModel : ViewModelBase
 
              MessageBus.Current.SendMessage(ResponseBody,MessageBusConstants.NewJsonGenerated);
 
-             var OldRequestDto=new OldRequestDto(SelectedHttpMethod,Url,Body,ResponseStatusCode,ResponseBody,headers);
+             var oldRequestDto=new OldRequestDto(SelectedHttpMethod,Url,Body,ResponseStatusCode,ResponseBody,headers);
 
-             MessageBus.Current.SendMessage(JsonSerializer.Serialize(OldRequestDto,SourceGenerationContext.Default.OldRequestDto),MessageBusConstants.NewRequest);
+             MessageBus.Current.SendMessage(JsonSerializer.Serialize(oldRequestDto,SourceGenerationContext.Default.OldRequestDto),MessageBusConstants.NewRequest);
 
              });
     }

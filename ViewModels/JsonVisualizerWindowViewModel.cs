@@ -1,9 +1,5 @@
 using System;
-using System.Reactive;
 using ReactiveUI;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Net.Http;
 using System.Text.Json;
 using RequesterMini.Constants;
 
@@ -23,14 +19,15 @@ public class JsonVisulizerWindowViewModel : ViewModelBase
             }
 
            
-            try {
-
-            PrettyJsonValue=value;
-        }
-        catch(JsonException e)
-        {
-            PrettyJsonValue=e.Message;
-        }
+            try 
+            { 
+                PrettyJsonValue=value;
+            }
+            
+            catch(JsonException e)
+            { 
+                PrettyJsonValue=e.Message;
+            }
         });
     }
 

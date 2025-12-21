@@ -1,9 +1,7 @@
 using System;
-using System.Reactive;
 using ReactiveUI;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Net.Http;
 using System.Text.Json;
 using RequesterMini.Utils;
 
@@ -17,7 +15,7 @@ public record OldRequestDto(string Method, string Url, string Body, string Respo
     {
         get
         {
-            return Method?.ToUpper() switch
+            return Method.ToUpper() switch
             {
                 "GET" => "#007BFF",      // Blue
                 "POST" => "#28A745",     // Green
