@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace RequesterMini.Utils;
 public class MakeRequest {
-    private readonly string _htttpMethod;
+    private readonly string _httpMethod;
     private readonly string _methodBody;
     private readonly  string _methodBodyType;
 
@@ -19,7 +19,7 @@ public class MakeRequest {
     public MakeRequest(HttpClient httpClient,string httpMethod,string methodBody,string methodBodyType,string url, Dictionary<string, string>? headers = null)
     {
         _httpClient=httpClient;
-        _htttpMethod=httpMethod;
+        _httpMethod=httpMethod;
         _methodBody=methodBody;
         _methodBodyType=methodBodyType;
         _url=url;
@@ -28,7 +28,7 @@ public class MakeRequest {
 
     public async  Task<(string statusCode,string response, DateTime? FinishedTime)> Execute()
     {
-        HttpMethod method = new HttpMethod(_htttpMethod);
+        HttpMethod method = new HttpMethod(_httpMethod);
 
         var request = new HttpRequestMessage(method, _url);
 
