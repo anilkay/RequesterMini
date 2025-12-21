@@ -21,11 +21,11 @@ public class MainWindowViewModel : ViewModelBase
     internal ReactiveCommand<Unit, Unit> ClickCommand { get; }
     internal ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
     
-    internal ObservableCollection<string> HttpMethods { get; } = new ObservableCollection<string>(HttpConstants.MethodValues);
+    internal ObservableCollection<string> HttpMethods { get; } = new(HttpConstants.MethodValues);
 
-    internal ObservableCollection<string> BodyTypes { get; } = new ObservableCollection<string>(HttpConstants.BodyTypeValues);
+    internal ObservableCollection<string> BodyTypes { get; } = new(HttpConstants.BodyTypeValues);
 
-    internal ObservableCollection<HeaderItem> Headers { get; } = new ObservableCollection<HeaderItem>();
+    internal ObservableCollection<HeaderItem> Headers { get; } = [];
 
     internal string SelectedBodyType { get; set; } = HttpConstants.SelectedBodyType;
 
@@ -34,31 +34,30 @@ public class MainWindowViewModel : ViewModelBase
 
     internal string Body { get; set; } = "";
 
-    private string _responseStatusCode="";
-    private string _selectedHttpMethod = HttpConstants.SelectedMethod;
 
-
-    internal string ResponseStatusCode{
-        get=>_responseStatusCode;
+    internal string ResponseStatusCode
+    {
+        get;
         set =>
-            this.RaiseAndSetIfChanged(ref 
-                _responseStatusCode,value);
-    }
+            this.RaiseAndSetIfChanged(ref
+                field, value);
+    } = "";
 
-    private string _responseBody="";
-
-    internal string ResponseBody{
-        get =>_responseBody;
-        set {
+    internal string ResponseBody
+    {
+        get;
+        set
+        {
             Console.WriteLine(value);
-            this.RaiseAndSetIfChanged(ref _responseBody,value);
+            this.RaiseAndSetIfChanged(ref field, value);
         }
-    }
-    
-    internal string SelectedHttpMethod {
-        get => _selectedHttpMethod;
-        set => this.RaiseAndSetIfChanged(ref _selectedHttpMethod, value);
-    }
+    } = "";
+
+    internal string SelectedHttpMethod
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = HttpConstants.SelectedMethod;
 
     public MainWindowViewModel()
     {

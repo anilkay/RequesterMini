@@ -32,7 +32,7 @@ public record OldRequestDto(string Method, string Url, string Body, string Respo
 
 public class OldRequestsWindowViewModel : ViewModelBase
 {
-    public ObservableCollection<OldRequestDto> OldRequests { get; } = new ObservableCollection<OldRequestDto>();
+    public ObservableCollection<OldRequestDto> OldRequests { get; } = [];
     public OldRequestsWindowViewModel()
     {
         MessageBus.Current.Listen<string>(Constants.MessageBusConstants.NewRequest).Subscribe(value =>
