@@ -1,9 +1,7 @@
 using System;
-using System.Reactive;
 using ReactiveUI;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Net.Http;
 using System.Text.Json;
 using RequesterMini.Utils;
 
@@ -17,7 +15,7 @@ public record OldRequestDto(string Method, string Url, string Body, string Respo
     {
         get
         {
-            return Method?.ToUpper() switch
+            return Method.ToUpper() switch
             {
                 "GET" => "#007BFF",      // Blue
                 "POST" => "#28A745",     // Green
@@ -34,7 +32,7 @@ public record OldRequestDto(string Method, string Url, string Body, string Respo
 
 public class OldRequestsWindowViewModel : ViewModelBase
 {
-    public ObservableCollection<OldRequestDto> OldRequests { get; } = new ObservableCollection<OldRequestDto>();
+    public ObservableCollection<OldRequestDto> OldRequests { get; } = [];
     public OldRequestsWindowViewModel()
     {
         MessageBus.Current.Listen<string>(Constants.MessageBusConstants.NewRequest).Subscribe(value =>

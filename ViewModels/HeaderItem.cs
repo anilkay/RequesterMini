@@ -6,27 +6,23 @@ namespace RequesterMini.ViewModels;
 
 public class HeaderItem : ViewModelBase
 {
-    private string _key = "";
-    private string _value = "";
-    private bool _isEnabled = true;
-
     public string Key
     {
-        get => _key;
-        set => this.RaiseAndSetIfChanged(ref _key, value);
-    }
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "";
 
     public string Value
     {
-        get => _value;
-        set => this.RaiseAndSetIfChanged(ref _value, value);
-    }
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "";
 
     public bool IsEnabled
     {
-        get => _isEnabled;
-        set => this.RaiseAndSetIfChanged(ref _isEnabled, value);
-    }
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = true;
 
     public ReactiveCommand<Unit, Unit> RemoveCommand { get; }
     

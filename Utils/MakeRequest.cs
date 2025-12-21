@@ -1,61 +1,59 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Net.Http;
-using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace RequesterMini.Utils;
 public class MakeRequest {
-    private readonly string HtttpMethod;
-    private readonly string MethodBody;
-    private readonly  string MethodBodyType;
+    private readonly string _httpMethod;
+    private readonly string _methodBody;
+    private readonly  string _methodBodyType;
 
-    private readonly HttpClient HttpClient;
+    private readonly HttpClient _httpClient;
 
-    private readonly string Url;
+    private readonly string _url;
     
-    private readonly Dictionary<string, string> Headers;
+    private readonly Dictionary<string, string> _headers;
 
-    public MakeRequest(HttpClient httpClient,string httpMethod,string methodBody,string methodBodyType,string url, Dictionary<string, string> headers = null)
+    public MakeRequest(HttpClient httpClient,string httpMethod,string methodBody,string methodBodyType,string url, Dictionary<string, string>? headers = null)
     {
-        HttpClient=httpClient;
-        HtttpMethod=httpMethod;
-        MethodBody=methodBody;
-        MethodBodyType=methodBodyType;
-        Url=url;
-        Headers=headers ?? new Dictionary<string, string>();
+        _httpClient=httpClient;
+        _httpMethod=httpMethod;
+        _methodBody=methodBody;
+        _methodBodyType=methodBodyType;
+        _url=url;
+        _headers=headers ?? new Dictionary<string, string>();
     }
 
     public async  Task<(string statusCode,string response, DateTime? FinishedTime)> Execute()
     {
-        HttpMethod method = new HttpMethod(HtttpMethod);
+        HttpMethod method = new HttpMethod(_httpMethod);
 
-        var request = new HttpRequestMessage(method, Url);
+        var request = new HttpRequestMessage(method, _url);
 
         HttpContent content;
-        switch (MethodBodyType.ToLowerInvariant())
+        switch (_methodBodyType.ToLowerInvariant())
         {
             case "json":
-                content = new StringContent(MethodBody, Encoding.UTF8, "application/json");
+                content = new StringContent(_methodBody, Encoding.UTF8, "application/json");
                 break;
             case "xml":
-                content = new StringContent(MethodBody, Encoding.UTF8, "application/xml");
+                content = new StringContent(_methodBody, Encoding.UTF8, "application/xml");
                 break;
             case "form":
                 var formData = new MultipartFormDataContent();
-                formData.Add(new StringContent(MethodBody), "fieldName");
+                formData.Add(new StringContent(_methodBody), "fieldName");
                 content = formData;
                 break;
             default:
-                content = new StringContent(MethodBody);
+                content = new StringContent(_methodBody);
                 break;
         }
         request.Content = content;
 
         // Add custom headers after content is set
-        foreach (var header in Headers)
+        foreach (var header in _headers)
         {
             if (!string.IsNullOrWhiteSpace(header.Key))
             {
@@ -71,7 +69,7 @@ public class MakeRequest {
             }
         }
 
-        var response = await HttpClient.SendAsync(request);
+        var response = await _httpClient.SendAsync(request);
 
         string responseContent = await response.Content.ReadAsStringAsync();
 
