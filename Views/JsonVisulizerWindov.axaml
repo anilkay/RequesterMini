@@ -2,17 +2,19 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:viewmodels="clr-namespace:Uygulama.ViewModels"
              xmlns:vm="using:RequesterMini.ViewModels"
-             mc:Ignorable="d"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:DataType="vm:JsonVisulizerWindowViewModel"
              x:Class="RequesterMini.Views.JsonVisulizerWindow">
-               <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+    
+    <Design.DataContext>
         <vm:JsonVisulizerWindowViewModel/>
     </Design.DataContext>
-    <StackPanel>
-        <TextBlock Text="{Binding PrettyJsonValue, Mode=TwoWay}" />
-    </StackPanel>
+    
+    <ScrollViewer>
+        <TextBlock Text="{Binding PrettyJsonValue, Mode=TwoWay}" 
+                   FontFamily="Consolas, monospace" 
+                   Margin="10" 
+                   TextWrapping="Wrap"/>
+    </ScrollViewer>
 </UserControl>

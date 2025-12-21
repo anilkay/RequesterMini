@@ -4,111 +4,123 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:views="clr-namespace:RequesterMini.Views"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
         x:Class="RequesterMini.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="RequesterMini">
-     <Window.Styles>
-        <Style Selector="Button.primary">
-            <Setter Property="Background" Value="#007BFF"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="BorderBrush" Value="#007BFF"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="4"/>
-            <Setter Property="Padding" Value="10,5"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-        <Style Selector="Button.secondary">
-            <Setter Property="Background" Value="#6C757D"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="BorderBrush" Value="#6C757D"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="4"/>
-            <Setter Property="Padding" Value="5,2"/>
-            <Setter Property="FontSize" Value="12"/>
-        </Style>
-        <Style Selector="Button.danger">
-            <Setter Property="Background" Value="#DC3545"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="BorderBrush" Value="#DC3545"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="4"/>
-            <Setter Property="Padding" Value="5,2"/>
-            <Setter Property="FontSize" Value="12"/>
-        </Style>
-    </Window.Styles>
+        Title="RequesterMini"
+        Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+
     <Design.DataContext>
         <vm:MainWindowViewModel/>
     </Design.DataContext>
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="0.40*"/>
-            <ColumnDefinition Width="0.50*"/>
-            <ColumnDefinition Width="0.10*"/>
-        </Grid.ColumnDefinitions>
-        <StackPanel Grid.Column="0" VerticalAlignment= "Center"> 
+
+    <Grid ColumnDefinitions="250, *">
+        <!-- Sidebar -->
+        <Border Grid.Column="0" 
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" 
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,1,0">
             <views:OldRequestWindow/>
-        </StackPanel>
-        <ScrollViewer Grid.Column="1" VerticalAlignment="Top">
-            <StackPanel>
-                <StackPanel.Styles>
-                    <Style Selector="ComboBox">
-                        <Setter Property="Margin" Value="10"/>
-                    </Style>
-                    <Style Selector="TextBox">
-                        <Setter Property="Margin" Value="10"/>
-                    </Style>
-                </StackPanel.Styles>
-                <ComboBox   ItemsSource="{Binding HttpMethods}" SelectedItem="{Binding SelectedHttpMethod, Mode=TwoWay}" Height="30" HorizontalAlignment="Stretch"/>
-                <TextBox HorizontalAlignment="Stretch" Text="{Binding Url}" Watermark="Enter URL here"/>
+        </Border>
+
+        <!-- Main Content -->
+        <Grid Grid.Column="1" RowDefinitions="Auto, Auto, *" Margin="20">
+            
+            <!-- Request Bar -->
+            <Grid Grid.Row="0" ColumnDefinitions="Auto, *, Auto" Margin="0,0,0,20">
+                <ComboBox Grid.Column="0" 
+                          ItemsSource="{Binding HttpMethods}" 
+                          SelectedItem="{Binding SelectedHttpMethod, Mode=TwoWay}" 
+                          Width="100" 
+                          Margin="0,0,10,0"
+                          VerticalAlignment="Center"/>
                 
-                <StackPanel Margin="10">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Headers" FontWeight="Bold" FontSize="16" Grid.Column="0"/>
-                        <Button Classes="secondary" Command="{Binding AddHeaderCommand}" Grid.Column="1" Content="+ Add Header"/>
+                <TextBox Grid.Column="1" 
+                         Text="{Binding Url}" 
+                         Watermark="Enter request URL" 
+                         VerticalAlignment="Center"
+                         Margin="0,0,10,0"/>
+                
+                <Button Grid.Column="2" 
+                        Classes="primary" 
+                        Command="{Binding ClickCommand}" 
+                        Content="Send"
+                        VerticalAlignment="Center"/>
+            </Grid>
+
+            <!-- Request Details (Tabs) -->
+            <TabControl Grid.Row="1" Margin="0,0,0,20" Height="250">
+                <TabItem Header="Params">
+                     <TextBlock Text="Query params editing coming soon..." VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="Gray"/>
+                </TabItem>
+                <TabItem Header="Headers">
+                    <Grid RowDefinitions="Auto, *">
+                        <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,10">
+                            <TextBlock Text="Request Headers" Classes="h2" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Classes="secondary" Command="{Binding AddHeaderCommand}" Content="+ Add Header"/>
+                        </Grid>
+                        
+                        <ScrollViewer Grid.Row="1">
+                            <ItemsControl ItemsSource="{Binding Headers}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid ColumnDefinitions="Auto, *, *, Auto" Margin="0,0,0,5">
+                                            <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                            <TextBox Grid.Column="1" Text="{Binding Key}" Watermark="Key" Margin="0,0,5,0"/>
+                                            <TextBox Grid.Column="2" Text="{Binding Value}" Watermark="Value" Margin="5,0,5,0"/>
+                                            <Button Grid.Column="3" Classes="danger" Content="✕" Command="{Binding RemoveCommand}" Padding="8,5"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
                     </Grid>
-                    
-                    <ItemsControl ItemsSource="{Binding Headers}" Margin="0,5,0,0">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="0,5,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="30"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}" VerticalAlignment="Center"/>
-                                    <TextBox Grid.Column="1" Text="{Binding Key}" Watermark="Header Key" Margin="5,0"/>
-                                    <TextBox Grid.Column="2" Text="{Binding Value}" Watermark="Header Value" Margin="5,0"/>
-                                    <Button Grid.Column="3" Classes="danger" Content="X" Command="{Binding RemoveCommand}"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
+                </TabItem>
+                <TabItem Header="Body">
+                    <Grid RowDefinitions="Auto, *">
+                        <ComboBox Grid.Row="0" 
+                                  ItemsSource="{Binding BodyTypes}" 
+                                  SelectedItem="{Binding SelectedBodyType, Mode=TwoWay}" 
+                                  Width="150" 
+                                  Margin="0,0,0,10"/>
+                        <TextBox Grid.Row="1" 
+                                 Text="{Binding Body}" 
+                                 AcceptsReturn="True" 
+                                 Watermark="Enter request body" 
+                                 TextWrapping="Wrap"
+                                 FontFamily="Consolas, monospace"/>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+
+            <!-- Response Section -->
+            <Grid Grid.Row="2" RowDefinitions="Auto, *">
+                <Border Grid.Row="0" 
+                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" 
+                        CornerRadius="4" 
+                        Padding="10" 
+                        Margin="0,0,0,10">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Status:" FontWeight="Bold" Margin="0,0,5,0"/>
+                        <TextBlock Text="{Binding ResponseStatusCode}" FontWeight="Bold" Foreground="{DynamicResource SystemControlForegroundAccentBrush}"/>
+                    </StackPanel>
+                </Border>
                 
-                <TextBox HorizontalAlignment="Stretch" Text="{Binding Body}" AcceptsReturn="True" Height="100" Watermark="Enter request body here" TextWrapping="Wrap"/>
-                <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding BodyTypes}" SelectedItem="{Binding SelectedBodyType, Mode=TwoWay}" Height="30"/>
-                <Button Classes="primary"  Command="{Binding ClickCommand}" HorizontalAlignment="Stretch">
-                    <TextBlock Text="Send Request" TextAlignment="Center" VerticalAlignment="Center"/>
-                </Button>
-                
-                <TextBox HorizontalAlignment="Stretch" Text="{Binding ResponseBody, Mode=TwoWay}" AcceptsReturn="True" Height="100"  Watermark="ResponseBody" TextWrapping="Wrap"/>
-                <TextBlock  Text="{Binding ResponseStatusCode, Mode=TwoWay}"
-                           FontSize="20"
-                           FontWeight="Bold"
-                           TextAlignment="Center"/>
-                <views:JsonVisulizerWindow />
-            </StackPanel>
-        </ScrollViewer>
+                <TabControl Grid.Row="1">
+                    <TabItem Header="Raw">
+                        <TextBox Text="{Binding ResponseBody, Mode=TwoWay}" 
+                                 AcceptsReturn="True" 
+                                 IsReadOnly="True" 
+                                 TextWrapping="Wrap"
+                                 FontFamily="Consolas, monospace"
+                                 BorderThickness="0"/>
+                    </TabItem>
+                    <TabItem Header="Preview">
+                        <views:JsonVisulizerWindow/>
+                    </TabItem>
+                </TabControl>
+            </Grid>
+        </Grid>
     </Grid>
 </Window>
