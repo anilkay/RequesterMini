@@ -7,20 +7,21 @@ using System.Net.Http;
 using RequesterMini.Constants;
 using System.Text.Json;
 using RequesterMini.Utils;
+using OneOf;
 
 namespace RequesterMini.ViewModels;
 
 public class MainWindowViewModel : ViewModelBase
 {
     private readonly HttpClient? _httpClient;
-   public  MainWindowViewModel(HttpClient httpClient):this()
+    public MainWindowViewModel(HttpClient httpClient) : this()
     {
         _httpClient = httpClient;
     }
 
     internal ReactiveCommand<Unit, Unit> ClickCommand { get; }
     internal ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
-    
+
     internal ObservableCollection<string> HttpMethods { get; } = new(HttpConstants.MethodValues);
 
     internal ObservableCollection<string> BodyTypes { get; } = new(HttpConstants.BodyTypeValues);
@@ -68,9 +69,11 @@ public class MainWindowViewModel : ViewModelBase
             Headers.Add(headerItem);
         });
 
-        ClickCommand = ReactiveCommand.CreateFromTask(async () => {
+        ClickCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
 
-            if(_httpClient is null){
+            if (_httpClient is null)
+            {
                 return;
             }
 
@@ -84,19 +87,31 @@ public class MainWindowViewModel : ViewModelBase
                 }
             }
 
-            MakeRequest makeRequest=new MakeRequest(_httpClient,SelectedHttpMethod,Body,SelectedBodyType,Url,headers);
-             (var statusCode,var response,_)=await makeRequest.Execute();
+            MakeRequest makeRequest = new MakeRequest(_httpClient, SelectedHttpMethod, Body, SelectedBodyType, Url, headers);
+            OneOf<RequestSuccess, RequestFailure> result = await makeRequest.Execute();
 
-             ResponseBody=response;
-             ResponseStatusCode=statusCode;
-
-             MessageBus.Current.SendMessage(ResponseBody,MessageBusConstants.NewJsonGenerated);
-
-             var oldRequestDto=new OldRequestDto(SelectedHttpMethod,Url,Body,ResponseStatusCode,ResponseBody,headers);
-
-             MessageBus.Current.SendMessage(JsonSerializer.Serialize(oldRequestDto,SourceGenerationContext.Default.OldRequestDto),MessageBusConstants.NewRequest);
-
+            result.Switch(
+                 success =>
+                  {
+                  ResponseBody = success.ResponseBody;
+                  ResponseStatusCode = success.StatusCode;
+                 },
+             failure =>
+             {
+                ResponseBody = failure.Message;
+                ResponseStatusCode = "Error";
              });
+
+
+
+
+            MessageBus.Current.SendMessage(ResponseBody, MessageBusConstants.NewJsonGenerated);
+
+            var oldRequestDto = new OldRequestDto(SelectedHttpMethod, Url, Body, ResponseStatusCode, ResponseBody, headers);
+
+            MessageBus.Current.SendMessage(JsonSerializer.Serialize(oldRequestDto, SourceGenerationContext.Default.OldRequestDto), MessageBusConstants.NewRequest);
+
+        });
     }
 
     private void RemoveHeader(HeaderItem header)
