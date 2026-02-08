@@ -81,7 +81,8 @@ public class MakeRequest {
 
         catch (Exception ex)
         {
-            return new RequestFailure("An error occurred while making the request.", ex);
+            var errorMessage = $"Error while making {_httpMethod} request to {_url}: {ex.Message}";
+            return new RequestFailure(errorMessage, ex);
         }
     }
 
