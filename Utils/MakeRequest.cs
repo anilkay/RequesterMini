@@ -1,3 +1,4 @@
+using OneOf;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
@@ -26,54 +27,63 @@ public class MakeRequest {
         _headers=headers ?? new Dictionary<string, string>();
     }
 
-    public async  Task<(string statusCode,string response, DateTime? FinishedTime)> Execute()
+    public async Task<OneOf<RequestSuccess, RequestFailure>> Execute()
     {
-        HttpMethod method = new HttpMethod(_httpMethod);
-
-        var request = new HttpRequestMessage(method, _url);
-
-        HttpContent content;
-        switch (_methodBodyType.ToLowerInvariant())
+        try
         {
-            case "json":
-                content = new StringContent(_methodBody, Encoding.UTF8, "application/json");
-                break;
-            case "xml":
-                content = new StringContent(_methodBody, Encoding.UTF8, "application/xml");
-                break;
-            case "form":
-                var formData = new MultipartFormDataContent();
-                formData.Add(new StringContent(_methodBody), "fieldName");
-                content = formData;
-                break;
-            default:
-                content = new StringContent(_methodBody);
-                break;
-        }
-        request.Content = content;
+            HttpMethod method = new HttpMethod(_httpMethod);
 
-        // Add custom headers after content is set
-        foreach (var header in _headers)
-        {
-            if (!string.IsNullOrWhiteSpace(header.Key))
+            var request = new HttpRequestMessage(method, _url);
+
+            HttpContent content;
+            switch (_methodBodyType.ToLowerInvariant())
             {
-                // Content-related headers should be added to Content.Headers
-                if (IsContentHeader(header.Key))
+                case "json":
+                    content = new StringContent(_methodBody, Encoding.UTF8, "application/json");
+                    break;
+                case "xml":
+                    content = new StringContent(_methodBody, Encoding.UTF8, "application/xml");
+                    break;
+                case "form":
+                    var formData = new MultipartFormDataContent();
+                    formData.Add(new StringContent(_methodBody), "fieldName");
+                    content = formData;
+                    break;
+                default:
+                    content = new StringContent(_methodBody);
+                    break;
+            }
+            request.Content = content;
+
+            // Add custom headers after content is set
+            foreach (var header in _headers)
+            {
+                if (!string.IsNullOrWhiteSpace(header.Key))
                 {
-                    request.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
-                }
-                else
-                {
-                    request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                    // Content-related headers should be added to Content.Headers
+                    if (IsContentHeader(header.Key))
+                    {
+                        request.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                    }
+                    else
+                    {
+                        request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                    }
                 }
             }
+
+            var response = await _httpClient.SendAsync(request);
+
+            string responseContent = await response.Content.ReadAsStringAsync();
+
+            return new RequestSuccess(response.StatusCode.ToString(), responseContent, null);
         }
 
-        var response = await _httpClient.SendAsync(request);
-
-        string responseContent = await response.Content.ReadAsStringAsync();
-
-        return (response.StatusCode.ToString(),responseContent,null);
+        catch (Exception ex)
+        {
+            var errorMessage = $"Error while making {_httpMethod} request to {_url}: {ex.Message}";
+            return new RequestFailure(errorMessage, ex);
+        }
     }
 
     private static bool IsContentHeader(string headerName)
@@ -96,3 +106,7 @@ public class MakeRequest {
         return contentHeaders.Contains(headerName);
     }
 }
+
+public sealed record RequestSuccess(string StatusCode, string ResponseBody, DateTime? FinishedTimeUtc);
+
+public sealed record RequestFailure(string Message, Exception? Exception = null);
