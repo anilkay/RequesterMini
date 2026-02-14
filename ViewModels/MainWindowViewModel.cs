@@ -7,6 +7,7 @@ using System.Net.Http;
 using RequesterMini.Constants;
 using System.Text.Json;
 using RequesterMini.Utils;
+using RequesterMini.Models;
 using OneOf;
 
 namespace RequesterMini.ViewModels;
@@ -54,6 +55,22 @@ public class MainWindowViewModel : ViewModelBase
         }
     } = "";
 
+    internal string FinishedTimeUtc
+    {
+        get;
+        set =>
+            this.RaiseAndSetIfChanged(ref
+                field, value);
+    } = "";
+
+    internal string RequestTime
+    {
+        get;
+        set =>
+            this.RaiseAndSetIfChanged(ref
+                field, value);
+    } = "";
+
     internal string SelectedHttpMethod
     {
         get;
@@ -95,11 +112,19 @@ public class MainWindowViewModel : ViewModelBase
                   {
                   ResponseBody = success.ResponseBody;
                   ResponseStatusCode = success.StatusCode;
+                  FinishedTimeUtc = success.FinishedTimeUtc?.ToString("yyyy-MM-dd HH:mm:ss") + " UTC";
+                  RequestTime = success.RequestTime is { } elapsed
+                      ? elapsed.TotalSeconds < 1
+                          ? $"{elapsed.TotalMilliseconds:F0} ms"
+                          : $"{elapsed.TotalSeconds:F1} sec"
+                      : "";
                  },
              failure =>
              {
                 ResponseBody = failure.Message;
                 ResponseStatusCode = "Error";
+                FinishedTimeUtc = "";
+                RequestTime = "";
              });
 
 
