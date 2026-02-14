@@ -4,23 +4,29 @@ using ReactiveUI;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Net.Http;
+using System.Threading;
 using RequesterMini.Constants;
 using System.Text.Json;
 using RequesterMini.Utils;
 using RequesterMini.Models;
 using OneOf;
+using System.Diagnostics.CodeAnalysis;
 
 namespace RequesterMini.ViewModels;
 
 public class MainWindowViewModel : ViewModelBase
 {
     private readonly HttpClient? _httpClient;
+    private CancellationTokenSource? _cts;
+
+    [RequiresUnreferencedCode("This constructor uses reflection.")]
     public MainWindowViewModel(HttpClient httpClient) : this()
     {
         _httpClient = httpClient;
     }
 
     internal ReactiveCommand<Unit, Unit> ClickCommand { get; }
+    internal ReactiveCommand<Unit, Unit> CancelCommand { get; }
     internal ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
 
     internal ObservableCollection<string> HttpMethods { get; } = new(HttpConstants.MethodValues);
@@ -77,8 +83,14 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = HttpConstants.SelectedMethod;
 
+    [RequiresUnreferencedCode("ReactiveCommand methods use reflection.")]
     public MainWindowViewModel()
     {
+        CancelCommand = ReactiveCommand.Create(() =>
+        {
+            _cts?.Cancel();
+        });
+
         AddHeaderCommand = ReactiveCommand.Create(() =>
         {
             var headerItem = new HeaderItem();
@@ -104,8 +116,12 @@ public class MainWindowViewModel : ViewModelBase
                 }
             }
 
+            _cts?.Cancel();
+            _cts?.Dispose();
+            _cts = new CancellationTokenSource();
+
             MakeRequest makeRequest = new MakeRequest(_httpClient, SelectedHttpMethod, Body, SelectedBodyType, Url, headers);
-            OneOf<RequestSuccess, RequestFailure> result = await makeRequest.Execute();
+            OneOf<RequestSuccess, RequestFailure> result = await makeRequest.Execute(_cts.Token);
 
             result.Switch(
                  success =>
