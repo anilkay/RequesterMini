@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using RequesterMini.Models;
 using RequesterMini.Utils.Timers;
@@ -32,7 +33,7 @@ public class MakeRequest {
         _timerFactory=timerFactory ?? new StopwatchTimerFactory();
     }
 
-    public async Task<OneOf<RequestSuccess, RequestFailure>> Execute()
+    public async Task<OneOf<RequestSuccess, RequestFailure>> Execute(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -78,13 +79,17 @@ public class MakeRequest {
             }
 
             var timer = _timerFactory.StartNew();
-            var response = await _httpClient.SendAsync(request);
-            string responseContent = await response.Content.ReadAsStringAsync();
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            string responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
             timer.Stop();
 
             return new RequestSuccess(response.StatusCode.ToString(), responseContent, DateTime.UtcNow, timer.Elapsed);
         }
 
+        catch (OperationCanceledException)
+        {
+            return new RequestFailure("Request was cancelled.");
+        }
         catch (Exception ex)
         {
             var errorMessage = $"Error while making {_httpMethod} request to {_url}: {ex.Message}";

@@ -42,11 +42,16 @@
                          VerticalAlignment="Center"
                          Margin="0,0,10,0"/>
                 
-                <Button Grid.Column="2" 
-                        Classes="primary" 
-                        Command="{Binding ClickCommand}" 
-                        Content="Send"
-                        VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5">
+                    <Button Classes="primary" 
+                            Command="{Binding ClickCommand}" 
+                            Content="Send"
+                            VerticalAlignment="Center"/>
+                    <Button Classes="danger" 
+                            Command="{Binding CancelCommand}" 
+                            Content="Cancel"
+                            VerticalAlignment="Center"/>
+                </StackPanel>
             </Grid>
 
             <!-- Request Details (Tabs) -->
