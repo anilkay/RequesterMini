@@ -1,9 +1,12 @@
 using OneOf;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using RequesterMini.Models;
+using RequesterMini.Utils.Timers;
 
 namespace RequesterMini.Utils;
 public class MakeRequest {
@@ -12,12 +15,13 @@ public class MakeRequest {
     private readonly  string _methodBodyType;
 
     private readonly HttpClient _httpClient;
+    private readonly IElapsedTimerFactory _timerFactory;
 
     private readonly string _url;
-    
+
     private readonly Dictionary<string, string> _headers;
 
-    public MakeRequest(HttpClient httpClient,string httpMethod,string methodBody,string methodBodyType,string url, Dictionary<string, string>? headers = null)
+    public MakeRequest(HttpClient httpClient,string httpMethod,string methodBody,string methodBodyType,string url, Dictionary<string, string>? headers = null, IElapsedTimerFactory? timerFactory = null)
     {
         _httpClient=httpClient;
         _httpMethod=httpMethod;
@@ -25,6 +29,7 @@ public class MakeRequest {
         _methodBodyType=methodBodyType;
         _url=url;
         _headers=headers ?? new Dictionary<string, string>();
+        _timerFactory=timerFactory ?? new StopwatchTimerFactory();
     }
 
     public async Task<OneOf<RequestSuccess, RequestFailure>> Execute()
@@ -72,11 +77,12 @@ public class MakeRequest {
                 }
             }
 
+            var timer = _timerFactory.StartNew();
             var response = await _httpClient.SendAsync(request);
-
             string responseContent = await response.Content.ReadAsStringAsync();
+            timer.Stop();
 
-            return new RequestSuccess(response.StatusCode.ToString(), responseContent, null);
+            return new RequestSuccess(response.StatusCode.ToString(), responseContent, DateTime.UtcNow, timer.Elapsed);
         }
 
         catch (Exception ex)
@@ -106,7 +112,3 @@ public class MakeRequest {
         return contentHeaders.Contains(headerName);
     }
 }
-
-public sealed record RequestSuccess(string StatusCode, string ResponseBody, DateTime? FinishedTimeUtc);
-
-public sealed record RequestFailure(string Message, Exception? Exception = null);
