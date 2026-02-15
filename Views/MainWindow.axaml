@@ -51,6 +51,9 @@
                             Command="{Binding CancelCommand}" 
                             Content="Cancel"
                             VerticalAlignment="Center"/>
+                    <Button Command="{Binding ExportCurlCommand}" 
+                            Content="Export cURL"
+                            VerticalAlignment="Center"/>
                 </StackPanel>
             </Grid>
 

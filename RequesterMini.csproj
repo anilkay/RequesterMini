@@ -8,10 +8,15 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   <PublishTrimmed>true</PublishTrimmed>
   <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+  <DefaultItemExcludes>$(DefaultItemExcludes);CurlExporter\**;CurlExporter.Tests\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include=".github\copilot-instructions.md" />
   </ItemGroup>
 
   <ItemGroup>
@@ -25,5 +30,9 @@
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.3" />
     <PackageReference Include="OneOf" Version="3.0.271" />
     <PackageReference Include="ReactiveUI.Avalonia" Version="11.3.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="CurlExporter\CurlExporter.csproj" />
   </ItemGroup>
 </Project>

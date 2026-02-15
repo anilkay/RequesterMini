@@ -9,8 +9,10 @@ using RequesterMini.Constants;
 using System.Text.Json;
 using RequesterMini.Utils;
 using RequesterMini.Models;
+using CurlExporter;
 using OneOf;
 using System.Diagnostics.CodeAnalysis;
+using System.Reactive.Linq;
 
 namespace RequesterMini.ViewModels;
 
@@ -28,6 +30,9 @@ public class MainWindowViewModel : ViewModelBase
     internal ReactiveCommand<Unit, Unit> ClickCommand { get; }
     internal ReactiveCommand<Unit, Unit> CancelCommand { get; }
     internal ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
+    internal ReactiveCommand<Unit, Unit> ExportCurlCommand { get; }
+
+    internal Interaction<string, Unit> CopyToClipboard { get; } = new();
 
     internal ObservableCollection<string> HttpMethods { get; } = new(HttpConstants.MethodValues);
 
@@ -96,6 +101,30 @@ public class MainWindowViewModel : ViewModelBase
             var headerItem = new HeaderItem();
             headerItem.OnRemove = RemoveHeader;
             Headers.Add(headerItem);
+        });
+
+        ExportCurlCommand = ReactiveCommand.Create(() =>
+        {
+            var builder = new CurlCommandBuilder()
+                .SetMethod(SelectedHttpMethod)
+                .SetUrl(Url);
+
+            foreach (var header in Headers)
+            {
+                if (header.IsEnabled && !string.IsNullOrWhiteSpace(header.Key))
+                {
+                    builder.AddHeader(header.Key, header.Value);
+                }
+            }
+
+            if (!string.IsNullOrEmpty(Body)
+                && Enum.TryParse<BodyType>(SelectedBodyType, ignoreCase: true, out var bodyType))
+            {
+                builder.SetBody(Body, bodyType);
+            }
+
+            var curl = builder.Build();
+            CopyToClipboard.Handle(curl).Subscribe();
         });
 
         ClickCommand = ReactiveCommand.CreateFromTask(async () =>
