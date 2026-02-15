@@ -9,6 +9,7 @@ using RequesterMini.Constants;
 using System.Text.Json;
 using RequesterMini.Utils;
 using RequesterMini.Models;
+using CurlExporter;
 using OneOf;
 using System.Diagnostics.CodeAnalysis;
 using System.Reactive.Linq;
@@ -104,16 +105,25 @@ public class MainWindowViewModel : ViewModelBase
 
         ExportCurlCommand = ReactiveCommand.Create(() =>
         {
-            var headers = new Dictionary<string, string>();
+            var builder = new CurlCommandBuilder()
+                .SetMethod(SelectedHttpMethod)
+                .SetUrl(Url);
+
             foreach (var header in Headers)
             {
                 if (header.IsEnabled && !string.IsNullOrWhiteSpace(header.Key))
                 {
-                    headers[header.Key] = header.Value;
+                    builder.AddHeader(header.Key, header.Value);
                 }
             }
 
-            var curl = CurlExporter.Export(SelectedHttpMethod, Url, Body, SelectedBodyType, headers);
+            if (!string.IsNullOrEmpty(Body)
+                && Enum.TryParse<BodyType>(SelectedBodyType, ignoreCase: true, out var bodyType))
+            {
+                builder.SetBody(Body, bodyType);
+            }
+
+            var curl = builder.Build();
             CopyToClipboard.Handle(curl).Subscribe();
         });
 
