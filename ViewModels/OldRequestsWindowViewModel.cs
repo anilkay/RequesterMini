@@ -5,7 +5,6 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using AppLogger;
 using RequesterMini.Utils;
 
 namespace RequesterMini.ViewModels;
@@ -39,13 +38,21 @@ public class OldRequestsWindowViewModel : ViewModelBase
         "RequesterMini",
         "history.json");
 
-    private bool _persistenceAvailable = true;
+    private readonly JsonFileStore.JsonFileStore<List<OldRequestDto>> _store = new(
+        HistoryPath, SourceGenerationContext.Default.ListOldRequestDto);
 
     public ObservableCollection<OldRequestDto> OldRequests { get; } = [];
 
     public OldRequestsWindowViewModel()
     {
-        LoadHistory();
+        var items = _store.Load();
+        if (items is not null)
+        {
+            foreach (var item in items)
+            {
+                OldRequests.Add(item);
+            }
+        }
 
         MessageBus.Current.Listen<string>(Constants.MessageBusConstants.NewRequest).Subscribe(value =>
         {
@@ -58,77 +65,8 @@ public class OldRequestsWindowViewModel : ViewModelBase
             if (oldRequestObject is not null)
             {
                 OldRequests.Add(oldRequestObject);
-                SaveHistory();
+                _store.Save(OldRequests.ToList());
             }
         });
-    }
-
-    private void LoadHistory()
-    {
-        try
-        {
-            if (!File.Exists(HistoryPath))
-            {
-                return;
-            }
-
-            var json = File.ReadAllText(HistoryPath);
-            var items = JsonSerializer.Deserialize(json, SourceGenerationContext.Default.ListOldRequestDto);
-
-            if (items is null)
-            {
-                return;
-            }
-
-            foreach (var item in items)
-            {
-                OldRequests.Add(item);
-            }
-        }
-        catch (Exception ex)
-        {
-            _persistenceAvailable = false;
-            Logger.Error("Failed to load request history. Continuing in memory-only mode.", ex);
-
-            try
-            {
-                if (File.Exists(HistoryPath))
-                {
-                    File.Move(HistoryPath, HistoryPath + ".bak", overwrite: true);
-                }
-            }
-            catch
-            {
-                // If backup fails, still continue in memory-only mode.
-            }
-        }
-    }
-
-    private void SaveHistory()
-    {
-        if (!_persistenceAvailable)
-        {
-            return;
-        }
-
-        try
-        {
-            var directory = Path.GetDirectoryName(HistoryPath);
-            if (!string.IsNullOrWhiteSpace(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            var json = JsonSerializer.Serialize(OldRequests.ToList(), SourceGenerationContext.Default.ListOldRequestDto);
-            var tempPath = HistoryPath + ".tmp";
-
-            File.WriteAllText(tempPath, json);
-            File.Move(tempPath, HistoryPath, overwrite: true);
-        }
-        catch (Exception ex)
-        {
-            _persistenceAvailable = false;
-            Logger.Error("Failed to save request history. Continuing in memory-only mode.", ex);
-        }
     }
 }
