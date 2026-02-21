@@ -1,6 +1,6 @@
 # RequesterMini
 
-Avolania Base Http request Maker
+Avalonia Base Http request Maker
 
 ## Generate Executable (for Smelly nerds)
 

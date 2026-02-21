@@ -5,10 +5,10 @@ using RequesterMini.Constants;
 
 namespace RequesterMini.ViewModels;
 
-public class JsonVisulizerWindowViewModel : ViewModelBase 
+public class JsonVisualizerWindowViewModel : ViewModelBase 
 {
 
-    public JsonVisulizerWindowViewModel(){
+    public JsonVisualizerWindowViewModel(){
         MessageBus.Current.Listen<string>(MessageBusConstants.NewJsonGenerated).Subscribe(value => 
         {
 
