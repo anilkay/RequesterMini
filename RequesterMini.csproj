@@ -6,9 +6,9 @@
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-    <PublishTrimmed>true</PublishTrimmed>
-    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
-    <DefaultItemExcludes>$(DefaultItemExcludes);CurlExporter\**;CurlExporter.Tests\**;JsonFileStore\**;JsonFileStore.Tests\**;AppLogger\**;AppLogger.Tests\**</DefaultItemExcludes>
+  <PublishTrimmed>true</PublishTrimmed>
+  <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+  <DefaultItemExcludes>$(DefaultItemExcludes);CurlExporter\**;CurlExporter.Tests\**;JsonFileStore\**;JsonFileStore.Tests\**;AppLogger\**;AppLogger.Tests\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,8 +19,6 @@
     <None Include=".github\copilot-instructions.md" />
     <None Include="AppLogger.Tests\AppLogger.Tests.csproj" />
     <None Include="AppLogger\AppLogger.csproj" />
-    <None Include="JsonFileStore.Tests\JsonFileStore.Tests.csproj" />
-    <None Include="JsonFileStore\JsonFileStore.csproj" />
   </ItemGroup>
 
   <ItemGroup>
