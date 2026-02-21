@@ -2,11 +2,12 @@ using System;
 using ReactiveUI;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
 using System.Text.Json;
 using RequesterMini.Utils;
 
 namespace RequesterMini.ViewModels;
-
 
 public record OldRequestDto(string Method, string Url, string Body, string ResponseStatusCode, string ResponseBody, Dictionary<string, string> Headers)
 {
@@ -32,26 +33,63 @@ public record OldRequestDto(string Method, string Url, string Body, string Respo
 
 public class OldRequestsWindowViewModel : ViewModelBase
 {
+    private static readonly string HistoryPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "RequesterMini",
+        "history.json");
+
     public ObservableCollection<OldRequestDto> OldRequests { get; } = [];
+
     public OldRequestsWindowViewModel()
     {
+        LoadHistory();
+
         MessageBus.Current.Listen<string>(Constants.MessageBusConstants.NewRequest).Subscribe(value =>
         {
             if (value == null)
             {
                 return;
             }
+
             var oldRequestObject = JsonSerializer.Deserialize<OldRequestDto>(value, SourceGenerationContext.Default.OldRequestDto);
             if (oldRequestObject is not null)
             {
                 OldRequests.Add(oldRequestObject);
+                SaveHistory();
             }
         });
     }
 
+    private void LoadHistory()
+    {
+        if (!File.Exists(HistoryPath))
+        {
+            return;
+        }
 
+        var json = File.ReadAllText(HistoryPath);
+        var items = JsonSerializer.Deserialize(json, SourceGenerationContext.Default.ListOldRequestDto);
 
+        if (items is null)
+        {
+            return;
+        }
 
+        foreach (var item in items)
+        {
+            OldRequests.Add(item);
+        }
+    }
 
+    private void SaveHistory()
+    {
+        var directory = Path.GetDirectoryName(HistoryPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
 
+        var json = JsonSerializer.Serialize(OldRequests.ToList(), SourceGenerationContext.Default.ListOldRequestDto);
+        File.WriteAllText(HistoryPath, json);
+    }
 }
