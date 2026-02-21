@@ -25,7 +25,7 @@ sealed class Program
             }
         };
 
-        AppLogger.Info("Application starting.");
+        AppLogger.Info($"Application starting. MinLogLevel={AppLogger.MinimumLevel}");
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         AppLogger.Info("Application stopped.");
     }

@@ -4,6 +4,14 @@ using System.IO;
 
 namespace RequesterMini.Utils;
 
+public enum LogLevel
+{
+    Debug = 0,
+    Info = 1,
+    Warning = 2,
+    Error = 3
+}
+
 public static class AppLogger
 {
     private static readonly object Gate = new();
@@ -15,9 +23,31 @@ public static class AppLogger
     private static readonly string LogPath = Path.Combine(LogDirectory, "requestermini.log");
     private const long MaxLogFileBytes = 2 * 1024 * 1024; // 2 MB
 
-    public static void Info(string message) => Write("INFO", message);
+#if DEBUG
+    private static LogLevel _minimumLevel = LogLevel.Debug;
+#else
+    private static LogLevel _minimumLevel = LogLevel.Info;
+#endif
 
-    public static void Warning(string message) => Write("WARN", message);
+    static AppLogger()
+    {
+        // Optional override: REQUESTERMINI_LOG_LEVEL=Debug|Info|Warning|Error
+        var configuredLevel = Environment.GetEnvironmentVariable("REQUESTERMINI_LOG_LEVEL");
+        if (Enum.TryParse<LogLevel>(configuredLevel, ignoreCase: true, out var parsedLevel))
+        {
+            _minimumLevel = parsedLevel;
+        }
+    }
+
+    public static LogLevel MinimumLevel => _minimumLevel;
+
+    public static void SetMinimumLevel(LogLevel level) => _minimumLevel = level;
+
+    public static void Debug(string message) => Write(LogLevel.Debug, message);
+
+    public static void Info(string message) => Write(LogLevel.Info, message);
+
+    public static void Warning(string message) => Write(LogLevel.Warning, message);
 
     public static void Error(string message, Exception? exception = null)
     {
@@ -25,11 +55,16 @@ public static class AppLogger
             ? message
             : $"{message}{Environment.NewLine}{exception}";
 
-        Write("ERROR", fullMessage);
+        Write(LogLevel.Error, fullMessage);
     }
 
-    private static void Write(string level, string message)
+    private static void Write(LogLevel level, string message)
     {
+        if (level < _minimumLevel)
+        {
+            return;
+        }
+
         try
         {
             lock (Gate)
@@ -38,7 +73,7 @@ public static class AppLogger
                 RotateIfNeeded();
 
                 var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
-                File.AppendAllText(LogPath, $"[{timestamp}] [{level}] {message}{Environment.NewLine}");
+                File.AppendAllText(LogPath, $"[{timestamp}] [{level.ToString().ToUpperInvariant()}] {message}{Environment.NewLine}");
             }
         }
         catch
