@@ -8,7 +8,7 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   <PublishTrimmed>true</PublishTrimmed>
   <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
-  <DefaultItemExcludes>$(DefaultItemExcludes);CurlExporter\**;CurlExporter.Tests\**;JsonFileStore\**;JsonFileStore.Tests\**</DefaultItemExcludes>
+  <DefaultItemExcludes>$(DefaultItemExcludes);CurlExporter\**;CurlExporter.Tests\**;JsonFileStore\**;JsonFileStore.Tests\**;AppLogger\**;AppLogger.Tests\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,8 +17,8 @@
 
   <ItemGroup>
     <None Include=".github\copilot-instructions.md" />
-    <None Include="JsonFileStore.Tests\JsonFileStore.Tests.csproj" />
-    <None Include="JsonFileStore\JsonFileStore.csproj" />
+    <None Include="AppLogger.Tests\AppLogger.Tests.csproj" />
+    <None Include="AppLogger\AppLogger.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -35,6 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="AppLogger\AppLogger.csproj" />
     <ProjectReference Include="CurlExporter\CurlExporter.csproj" />
     <ProjectReference Include="JsonFileStore\JsonFileStore.csproj" />
   </ItemGroup>

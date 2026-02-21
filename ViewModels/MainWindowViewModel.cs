@@ -9,6 +9,7 @@ using RequesterMini.Constants;
 using System.Text.Json;
 using RequesterMini.Utils;
 using RequesterMini.Models;
+using AppLogger;
 using CurlExporter;
 using OneOf;
 using System.Diagnostics.CodeAnalysis;
@@ -59,11 +60,7 @@ public class MainWindowViewModel : ViewModelBase
     internal string ResponseBody
     {
         get;
-        set
-        {
-            Console.WriteLine(value);
-            this.RaiseAndSetIfChanged(ref field, value);
-        }
+        set => this.RaiseAndSetIfChanged(ref field, value);
     } = "";
 
     internal string FinishedTimeUtc
@@ -149,6 +146,7 @@ public class MainWindowViewModel : ViewModelBase
             _cts?.Dispose();
             _cts = new CancellationTokenSource();
 
+            Logger.Info($"Sending {SelectedHttpMethod} request to {Url}");
             MakeRequest makeRequest = new MakeRequest(_httpClient, SelectedHttpMethod, Body, SelectedBodyType, Url, headers);
             OneOf<RequestSuccess, RequestFailure> result = await makeRequest.Execute(_cts.Token);
 
@@ -163,6 +161,8 @@ public class MainWindowViewModel : ViewModelBase
                           ? $"{elapsed.TotalMilliseconds:F0} ms"
                           : $"{elapsed.TotalSeconds:F1} sec"
                       : "";
+
+                  Logger.Info($"Request succeeded. Method={SelectedHttpMethod}, Url={Url}, Status={success.StatusCode}, Duration={RequestTime}");
                  },
              failure =>
              {
@@ -170,6 +170,8 @@ public class MainWindowViewModel : ViewModelBase
                 ResponseStatusCode = "Error";
                 FinishedTimeUtc = "";
                 RequestTime = "";
+
+                Logger.Error($"Request failed. Method={SelectedHttpMethod}, Url={Url}, Message={failure.Message}", failure.Exception);
              });
 
 
