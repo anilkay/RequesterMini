@@ -1,6 +1,6 @@
-﻿using Avalonia;
+﻿using AppLogger;
+using Avalonia;
 using ReactiveUI.Avalonia;
-using RequesterMini.Utils;
 using System;
 
 namespace RequesterMini;
@@ -13,21 +13,27 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+#if DEBUG
+        Logger.Initialize("RequesterMini", LogLevel.Debug);
+#else
+        Logger.Initialize("RequesterMini");
+#endif
+
         AppDomain.CurrentDomain.UnhandledException += (_, eventArgs) =>
         {
             if (eventArgs.ExceptionObject is Exception ex)
             {
-                AppLogger.Error("Unhandled exception", ex);
+                Logger.Error("Unhandled exception", ex);
             }
             else
             {
-                AppLogger.Error("Unhandled non-exception error occurred.");
+                Logger.Error("Unhandled non-exception error occurred.");
             }
         };
 
-        AppLogger.Info($"Application starting. MinLogLevel={AppLogger.MinimumLevel}");
+        Logger.Info($"Application starting. MinLogLevel={Logger.MinimumLevel}");
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
-        AppLogger.Info("Application stopped.");
+        Logger.Info("Application stopped.");
     }
 
     // Avalonia configuration, don't remove; also used by visual designer.

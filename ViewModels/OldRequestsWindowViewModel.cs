@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using AppLogger;
 using RequesterMini.Utils;
 
 namespace RequesterMini.ViewModels;
@@ -87,7 +88,7 @@ public class OldRequestsWindowViewModel : ViewModelBase
         catch (Exception ex)
         {
             _persistenceAvailable = false;
-            AppLogger.Error("[RequesterMini] Failed to load request history. Continuing in memory-only mode.", ex);
+            Logger.Error("Failed to load request history. Continuing in memory-only mode.", ex);
 
             try
             {
@@ -127,7 +128,7 @@ public class OldRequestsWindowViewModel : ViewModelBase
         catch (Exception ex)
         {
             _persistenceAvailable = false;
-            AppLogger.Error("[RequesterMini] Failed to save request history. Continuing in memory-only mode.", ex);
+            Logger.Error("Failed to save request history. Continuing in memory-only mode.", ex);
         }
     }
 }
