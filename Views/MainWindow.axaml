@@ -135,7 +135,7 @@
                                  BorderThickness="0"/>
                     </TabItem>
                     <TabItem Header="Preview">
-                        <views:JsonVisulizerWindow/>
+                        <views:JsonVisualizerWindow/>
                     </TabItem>
                 </TabControl>
             </Grid>

@@ -4,11 +4,11 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:RequesterMini.ViewModels"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:DataType="vm:JsonVisulizerWindowViewModel"
-             x:Class="RequesterMini.Views.JsonVisulizerWindow">
+             x:DataType="vm:JsonVisualizerWindowViewModel"
+             x:Class="RequesterMini.Views.JsonVisualizerWindow">
     
     <Design.DataContext>
-        <vm:JsonVisulizerWindowViewModel/>
+        <vm:JsonVisualizerWindowViewModel/>
     </Design.DataContext>
     
     <ScrollViewer>
