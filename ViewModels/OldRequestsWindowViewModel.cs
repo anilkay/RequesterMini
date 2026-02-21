@@ -87,7 +87,7 @@ public class OldRequestsWindowViewModel : ViewModelBase
         catch (Exception ex)
         {
             _persistenceAvailable = false;
-            Console.WriteLine($"[RequesterMini] Failed to load request history. Continuing in memory-only mode. {ex.Message}");
+            AppLogger.Error("[RequesterMini] Failed to load request history. Continuing in memory-only mode.", ex);
 
             try
             {
@@ -127,7 +127,7 @@ public class OldRequestsWindowViewModel : ViewModelBase
         catch (Exception ex)
         {
             _persistenceAvailable = false;
-            Console.WriteLine($"[RequesterMini] Failed to save request history. Continuing in memory-only mode. {ex.Message}");
+            AppLogger.Error("[RequesterMini] Failed to save request history. Continuing in memory-only mode.", ex);
         }
     }
 }
