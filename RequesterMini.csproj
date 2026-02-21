@@ -17,8 +17,6 @@
 
   <ItemGroup>
     <None Include=".github\copilot-instructions.md" />
-    <None Include="AppLogger.Tests\AppLogger.Tests.csproj" />
-    <None Include="AppLogger\AppLogger.csproj" />
   </ItemGroup>
 
   <ItemGroup>
