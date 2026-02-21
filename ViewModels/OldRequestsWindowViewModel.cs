@@ -2,11 +2,12 @@ using System;
 using ReactiveUI;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
 using System.Text.Json;
 using RequesterMini.Utils;
 
 namespace RequesterMini.ViewModels;
-
 
 public record OldRequestDto(string Method, string Url, string Body, string ResponseStatusCode, string ResponseBody, Dictionary<string, string> Headers)
 {
@@ -32,26 +33,40 @@ public record OldRequestDto(string Method, string Url, string Body, string Respo
 
 public class OldRequestsWindowViewModel : ViewModelBase
 {
+    private static readonly string HistoryPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "RequesterMini",
+        "history.json");
+
+    private readonly JsonFileStore.JsonFileStore<List<OldRequestDto>> _store = new(
+        HistoryPath, SourceGenerationContext.Default.ListOldRequestDto);
+
     public ObservableCollection<OldRequestDto> OldRequests { get; } = [];
+
     public OldRequestsWindowViewModel()
     {
+        var items = _store.Load();
+        if (items is not null)
+        {
+            foreach (var item in items)
+            {
+                OldRequests.Add(item);
+            }
+        }
+
         MessageBus.Current.Listen<string>(Constants.MessageBusConstants.NewRequest).Subscribe(value =>
         {
             if (value == null)
             {
                 return;
             }
+
             var oldRequestObject = JsonSerializer.Deserialize<OldRequestDto>(value, SourceGenerationContext.Default.OldRequestDto);
             if (oldRequestObject is not null)
             {
                 OldRequests.Add(oldRequestObject);
+                _store.Save(OldRequests.ToList());
             }
         });
     }
-
-
-
-
-
-
 }
