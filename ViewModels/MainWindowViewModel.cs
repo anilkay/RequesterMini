@@ -44,9 +44,17 @@ public class MainWindowViewModel : ViewModelBase
     internal string SelectedBodyType { get; set; } = HttpConstants.SelectedBodyType;
 
 
-    internal string Url { get; set; } = HttpConstants.StartUrl;
+    internal string Url
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = HttpConstants.StartUrl;
 
-    internal string Body { get; set; } = "";
+    internal string Body
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "";
 
 
     internal string ResponseStatusCode
@@ -122,6 +130,28 @@ public class MainWindowViewModel : ViewModelBase
 
             var curl = builder.Build();
             CopyToClipboard.Handle(curl).Subscribe();
+        });
+
+        MessageBus.Current.Listen<string>(MessageBusConstants.LoadRequest).Subscribe(value =>
+        {
+            if (value == null) return;
+
+            var dto = JsonSerializer.Deserialize<OldRequestDto>(value, SourceGenerationContext.Default.OldRequestDto);
+            if (dto is null) return;
+
+            Url = dto.Url;
+            SelectedHttpMethod = dto.Method;
+            Body = dto.Body;
+            ResponseStatusCode = dto.ResponseStatusCode;
+            ResponseBody = dto.ResponseBody;
+
+            Headers.Clear();
+            foreach (var kvp in dto.Headers)
+            {
+                var headerItem = new HeaderItem { Key = kvp.Key, Value = kvp.Value };
+                headerItem.OnRemove = RemoveHeader;
+                Headers.Add(headerItem);
+            }
         });
 
         ClickCommand = ReactiveCommand.CreateFromTask(async () =>

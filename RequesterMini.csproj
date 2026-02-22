@@ -7,6 +7,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   <PublishTrimmed>true</PublishTrimmed>
+  <PublishSingleFile>true</PublishSingleFile>
   <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
   <DefaultItemExcludes>$(DefaultItemExcludes);CurlExporter\**;CurlExporter.Tests\**;JsonFileStore\**;JsonFileStore.Tests\**;AppLogger\**;AppLogger.Tests\**</DefaultItemExcludes>
   </PropertyGroup>
@@ -32,6 +33,14 @@
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.3" />
     <PackageReference Include="OneOf" Version="3.0.271" />
     <PackageReference Include="ReactiveUI.Avalonia" Version="11.3.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <TrimmerRootAssembly Include="ReactiveUI" />
+    <TrimmerRootAssembly Include="ReactiveUI.Avalonia" />
+    <TrimmerRootAssembly Include="DynamicData" />
+    <TrimmerRootAssembly Include="Splat" />
+    <TrimmerRootAssembly Include="System.Reactive" />
   </ItemGroup>
 
   <ItemGroup>

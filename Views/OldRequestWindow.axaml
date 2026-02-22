@@ -13,32 +13,50 @@
     
     <Grid RowDefinitions="Auto, *">
         <TextBlock Text="History" FontWeight="Bold" FontSize="18" Margin="10"/>
-        
-        <ListBox Grid.Row="1" ItemsSource="{Binding OldRequests}" Background="Transparent" BorderThickness="0">
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <Grid ColumnDefinitions="Auto, *">
-                        <Border Grid.Column="0" 
-                                CornerRadius="3" 
-                                Background="{Binding MethodColor}"
-                                Padding="6,3"
-                                Margin="0,0,10,0"
-                                VerticalAlignment="Center"
-                                MinWidth="45">
-                            <TextBlock Text="{Binding Method}" 
-                                       FontWeight="Bold" 
-                                       FontSize="11"
-                                       Foreground="White"
-                                       HorizontalAlignment="Center"/>
-                        </Border>
-                        <TextBlock Grid.Column="1" 
-                                   Text="{Binding Url}" 
-                                   TextTrimming="CharacterEllipsis" 
-                                   VerticalAlignment="Center"
-                                   ToolTip.Tip="{Binding Url}"/>
-                    </Grid>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+
+        <ScrollViewer Grid.Row="1">
+            <ItemsControl ItemsSource="{Binding OldRequests}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:OldRequestDto">
+                        <Grid ColumnDefinitions="Auto, *, Auto" Margin="4,2">
+                            <Border Grid.Column="0" 
+                                    CornerRadius="3" 
+                                    Background="{Binding MethodColor}"
+                                    Padding="6,3"
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center"
+                                    MinWidth="45">
+                                <TextBlock Text="{Binding Method}" 
+                                           FontWeight="Bold" 
+                                           FontSize="11"
+                                           Foreground="White"
+                                           HorizontalAlignment="Center"/>
+                            </Border>
+                            <Button Grid.Column="1"
+                                    Command="{Binding $parent[UserControl].((vm:OldRequestsWindowViewModel)DataContext).LoadCommand}"
+                                    CommandParameter="{Binding}"
+                                    Background="Transparent"
+                                    Padding="0"
+                                    Cursor="Hand"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Url}" 
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTip.Tip="{Binding Url}"/>
+                            </Button>
+                            <Button Grid.Column="2"
+                                    Command="{Binding $parent[UserControl].((vm:OldRequestsWindowViewModel)DataContext).RemoveCommand}"
+                                    CommandParameter="{Binding}"
+                                    Content="🗑"
+                                    Background="Transparent"
+                                    Padding="6,3"
+                                    Margin="6,0,0,0"
+                                    VerticalAlignment="Center"/>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
     </Grid>
 </UserControl>
