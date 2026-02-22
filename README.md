@@ -28,3 +28,11 @@ The following native files must be distributed **alongside** the exe:
 
 ## Used Prompts
 - [For Styling](https://chat.openai.com/share/56bad6c9-9997-4f55-96d1-5b7714ede4be).
+
+## Screenshot
+
+The following screenshot shows the main UI of RequesterMini. Add the image file at `docs/screenshot.png` so it is displayed on GitHub.
+
+![RequesterMini screenshot](docs/screenshot.png)
+
+If the image does not appear, place your screenshot at `docs/screenshot.png` (or update the path above) and commit the file.
