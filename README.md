@@ -35,4 +35,4 @@ The following screenshot shows the main UI of RequesterMini. Add the image file 
 
 ![RequesterMini screenshot](docs/screenshot.png)
 
-If the image does not appear, place your screenshot at `docs/screenshot.png` (or update the path above) and commit the file.
+If the image does not appear, place your screenshot at `docs/reqesutermini.png` (or update the path above) and commit the file.
