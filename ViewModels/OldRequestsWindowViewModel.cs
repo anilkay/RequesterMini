@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Reactive;
 using ReactiveUI;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -43,8 +45,25 @@ public class OldRequestsWindowViewModel : ViewModelBase
 
     public ObservableCollection<OldRequestDto> OldRequests { get; } = [];
 
+    internal ReactiveCommand<OldRequestDto, Unit> RemoveCommand { get; }
+
+    internal ReactiveCommand<OldRequestDto, Unit> LoadCommand { get; }
+
+    [RequiresUnreferencedCode("Uses ReactiveCommand")]
     public OldRequestsWindowViewModel()
     {
+        RemoveCommand = ReactiveCommand.Create<OldRequestDto>(item =>
+        {
+            OldRequests.Remove(item);
+            _store.Save(OldRequests.ToList());
+        });
+
+        LoadCommand = ReactiveCommand.Create<OldRequestDto>(item =>
+        {
+            var json = JsonSerializer.Serialize(item, SourceGenerationContext.Default.OldRequestDto);
+            MessageBus.Current.SendMessage(json, Constants.MessageBusConstants.LoadRequest);
+        });
+
         var items = _store.Load();
         if (items is not null)
         {
