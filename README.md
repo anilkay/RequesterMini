@@ -33,5 +33,5 @@ The following native files must be distributed **alongside** the exe:
 
 The following screenshot shows the main UI of RequesterMini.
 
-![RequesterMini screenshot](docs/reqesutermini.png)
+![RequesterMini screenshot](docs/reqesutermini.PNG)
 
