@@ -11,10 +11,11 @@
         <vm:JsonVisualizerWindowViewModel/>
     </Design.DataContext>
 
-    <ScrollViewer>
+    <ScrollViewer Background="#1E1E1E">
         <SelectableTextBlock x:Name="JsonTextBlock"
                              FontFamily="Consolas, monospace"
                              FontSize="13"
+                             Foreground="#D4D4D4"
                              Margin="12"
                              TextWrapping="Wrap" />
     </ScrollViewer>
