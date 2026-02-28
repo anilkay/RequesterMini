@@ -2,109 +2,203 @@
 
 ## Tech Stack
 
-- .NET 10 / C# 14 (use `field` keyword, modern APIs)
-- Avalonia UI 11.3 with Fluent theme and compiled bindings (`x:DataType`)
-- ReactiveUI for MVVM
-- OneOf for discriminated union result types
-- System.Text.Json with source generation (reflection disabled, publish-trimmed)
-- xUnit for testing
+- .NET 10 / C# 14 — use `field` keyword, modern APIs, nullable enabled everywhere
+- Avalonia UI 11.3 — Fluent theme, compiled bindings (`AvaloniaUseCompiledBindingsByDefault=true`)
+- ReactiveUI — MVVM, `ReactiveObject`, `ReactiveCommand`, `MessageBus`, `Interaction`
+- OneOf — discriminated union result types (no exceptions for control flow)
+- System.Text.Json — source-generated only; reflection is **disabled** (`JsonSerializerIsReflectionEnabledByDefault=false`)
+- xUnit — testing framework
 
 ## Solution Structure
 
 ```
-RequesterMini.sln
-├── RequesterMini.csproj          # Main Avalonia WinExe app
-│   ├── Views/                    # Avalonia AXAML views + code-behind
-│   ├── ViewModels/               # ReactiveUI ViewModels
-│   ├── Models/                   # DTOs and result types (OneOf)
-│   ├── Utils/                    # Utilities (MakeRequest, timers)
-│   └── Constants/                # Static config values
-├── CurlExporter/                 # Class library (reusable, no UI deps)
-│   └── CurlCommandBuilder.cs    # Fluent builder for cURL commands
-└── CurlExporter.Tests/           # xUnit test project
+RequesterMini.slnx
+├── src/
+│   ├── RequesterMini/          # Main Avalonia WinExe app
+│   │   ├── Views/              # AXAML views + code-behind pairs
+│   │   ├── ViewModels/         # ReactiveUI ViewModels
+│   │   ├── Models/             # Immutable DTOs and result types
+│   │   ├── Utils/              # App-scoped utilities (MakeRequest, timers, colorizer)
+│   │   └── Constants/          # Static string/config constants
+│   ├── AppLogger/              # Class library — file-based structured logging
+│   ├── CurlExporter/           # Class library — fluent cURL command builder
+│   └── JsonFileStore/          # Class library — generic JSON file persistence
+└── tests/
+    ├── AppLogger.Tests/
+    ├── CurlExporter.Tests/
+    └── JsonFileStore.Tests/
 ```
 
-`CurlExporter/` and `CurlExporter.Tests/` are subdirectories of the main project. The main `.csproj` excludes them via `DefaultItemExcludes`. Always add this exclusion when creating new projects as subdirectories:
-
-```xml
-<DefaultItemExcludes>$(DefaultItemExcludes);NewProject\**</DefaultItemExcludes>
-```
+New reusable logic goes in a class library under `src/` with a paired test project under `tests/`. App-specific UI logic stays in the main project.
 
 ## Coding Conventions
 
-### Properties
+### ReactiveUI Properties
 
-Use the C# 14 `field` keyword for semi-auto properties with ReactiveUI:
+Use the C# 14 `field` keyword — no explicit backing fields:
 
 ```csharp
-internal string ResponseStatusCode
+internal string Url
 {
     get;
     set => this.RaiseAndSetIfChanged(ref field, value);
-} = "";
+} = HttpConstants.StartUrl;
+```
+
+Use `ObservableCollection` for lists:
+
+```csharp
+internal ObservableCollection<HeaderItem> Headers { get; } = [];
 ```
 
 ### Commands
 
-- Use `ReactiveCommand.Create(...)` for synchronous commands.
-- Use `ReactiveCommand.CreateFromTask(...)` for async commands.
-- Mark constructors containing `ReactiveCommand` creation with `[RequiresUnreferencedCode]`.
+```csharp
+internal ReactiveCommand<Unit, Unit> ClickCommand { get; }
+internal ReactiveCommand<OldRequestDto, Unit> RemoveCommand { get; }
+```
 
-### ViewModel-to-View Communication
+- Sync: `ReactiveCommand.Create(...)`
+- Async: `ReactiveCommand.CreateFromTask(async () => ...)`
+- Always mark constructors that create `ReactiveCommand` with `[RequiresUnreferencedCode("Uses ReactiveCommand")]`
 
-Use `Interaction<TInput, TOutput>` for platform-specific operations (clipboard, dialogs). Register handlers in View code-behind via `DataContextChanged`, not `WhenActivated`.
+### Visibility
+
+| Location | Modifier |
+|---|---|
+| ViewModel properties & commands | `internal` |
+| ViewModel classes | `public` (required for AXAML `x:DataType`) |
+| Library public API | `public` |
+| Utility/helper classes in main app | `internal static` |
+| `SourceGenerationContext` | `internal partial class` |
+
+### ViewModel ↔ View Communication
+
+**Bindings** for data, **commands** for actions, **`Interaction<TIn, TOut>`** for platform services:
 
 ```csharp
-// ViewModel — declare and fire
+// ViewModel
 internal Interaction<string, Unit> CopyToClipboard { get; } = new();
-CopyToClipboard.Handle(text).Subscribe();
 
-// View — register handler
+// View code-behind (register in DataContextChanged, not WhenActivated)
 vm.CopyToClipboard.RegisterHandler(async interaction =>
 {
-    var clipboard = GetTopLevel(this)?.Clipboard;
-    if (clipboard is not null)
-        await clipboard.SetTextAsync(interaction.Input);
+    await GetTopLevel(this)?.Clipboard?.SetTextAsync(interaction.Input);
     interaction.SetOutput(Unit.Default);
 });
 ```
 
-### Visibility
+**MessageBus** for cross-ViewModel events:
 
-- ViewModel properties and commands: `internal`.
-- Public classes in class libraries: `public`.
-- Utility classes in the main app: `internal static`.
+```csharp
+// Send
+MessageBus.Current.SendMessage(payload, MessageBusConstants.NewRequest);
+
+// Receive
+MessageBus.Current.Listen<string>(MessageBusConstants.NewRequest)
+    .Subscribe(value => { ... });
+```
+
+Always use `ObserveOn(RxApp.MainThreadScheduler)` before `.Subscribe()` in code-behind when updating UI elements from a `WhenAnyValue` subscription.
 
 ### JSON Serialization
 
-Use source-generated `JsonSerializerContext` (`SourceGenerationContext`). Never use reflection-based serialization.
+Always use `SourceGenerationContext` — never `new JsonSerializerOptions()` with reflection:
+
+```csharp
+// Register types
+[JsonSerializable(typeof(OldRequestDto))]
+[JsonSerializable(typeof(List<OldRequestDto>))]
+internal partial class SourceGenerationContext : JsonSerializerContext { }
+
+// Use
+JsonSerializer.Serialize(item, SourceGenerationContext.Default.OldRequestDto);
+JsonSerializer.Deserialize<OldRequestDto>(json, SourceGenerationContext.Default.OldRequestDto);
+```
+
+For pretty-printing only (no type), use `Utf8JsonWriter` directly — it is trimming-safe:
+
+```csharp
+using var doc = JsonDocument.Parse(json);
+using var ms = new MemoryStream();
+using var writer = new Utf8JsonWriter(ms, new JsonWriterOptions { Indented = true });
+doc.WriteTo(writer);
+writer.Flush();
+```
 
 ### Result Types
 
-Use `OneOf<TSuccess, TFailure>` for operation results instead of exceptions for control flow.
+Use `OneOf<RequestSuccess, RequestFailure>` — never throw for expected failures:
+
+```csharp
+return result.Match(
+    success => ...,
+    failure => ...
+);
+```
+
+### Error Handling in Libraries
+
+Use built-in throw helpers:
+
+```csharp
+ArgumentException.ThrowIfNullOrWhiteSpace(url);
+ArgumentNullException.ThrowIfNull(headers);
+```
+
+## AXAML Conventions
+
+- Declare `x:DataType` on the root element for compiled bindings
+- Always include a `Design.DataContext` for IDE preview
+- Use `Command="{Binding CommandName}"` for button actions
+- Use `$parent[UserControl].((vm:SomeViewModel)DataContext).CommandName` to reach parent ViewModel inside `DataTemplate`
+- Preferred controls: `Grid`, `StackPanel`, `ScrollViewer`, `TabControl`, `ItemsControl`, `Border`, `ComboBox`, `TextBox` with `Watermark`
+- Button styling via `Classes="primary"` / `Classes="danger"` / `Classes="secondary"`
+- `SelectableTextBlock` for read-only but copyable text (e.g. response body)
 
 ## Class Libraries
 
-When extracting reusable logic:
-
-1. Target `net10.0` as an SDK-style `classlib`.
-2. Use `public` API with argument validation (`ArgumentException.ThrowIfNullOrWhiteSpace`, etc.).
-3. Prefer fluent builder patterns for multi-parameter construction.
-4. Map application-specific string concepts into strongly-typed enums inside the library.
-5. Eliminate thin wrapper/helper classes — callers use the library API directly.
+1. Target `net10.0` SDK-style `classlib`.
+2. `public` API with argument validation at entry points.
+3. Fluent builder pattern for multi-step construction.
+4. Map string concepts to strongly-typed enums inside the library.
+5. No UI dependencies — fully testable in isolation.
 
 ## Testing
 
-- Framework: xUnit (v2.9+).
-- Use `[Fact]` for single-case tests and `[Theory]` with `[InlineData]` for parameterized tests.
-- Naming: `MethodName_Scenario_ExpectedBehavior`.
-- Cover: happy paths, edge cases (escaping, empty input), validation (throws on invalid state), and enum/mapping completeness.
+- Framework: xUnit v2.9+
+- Naming: `MethodName_Scenario_ExpectedBehavior`
+- Use `[Fact]` for single cases, `[Theory] + [InlineData]` for parameterized
+- One test class per production class, named `{ClassName}Tests`
+- Isolate file I/O with per-test temp directories: `Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString())`
+- Implement `IDisposable` to clean up temp state
+- Cover: happy path, edge cases, invalid input (throws), enum/mapping completeness
 
-## Adding Features
+## Build & Publishing
 
-1. App-specific features (UI, ViewModel wiring) go in the main project.
-2. Reusable, UI-independent logic goes in a class library with tests.
-3. Wire ViewModel to View using commands for buttons and interactions for platform services.
-4. Add AXAML controls with `Command="{Binding CommandName}"`.
-5. Write tests for any library-level logic.
-6. Build the full solution and run tests before finishing.
+```xml
+<PublishTrimmed>true</PublishTrimmed>
+<PublishSingleFile>true</PublishSingleFile>
+<JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+<AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+```
+
+Publish commands:
+
+```bash
+# Windows
+dotnet publish -r win-x64 --self-contained true -c Release
+
+# macOS
+dotnet publish -r osx-arm64 --self-contained true -c Release
+```
+
+Required native DLLs to ship alongside the exe: `av_libglesv2.dll`, `libHarfBuzzSharp.dll`, `libSkiaSharp.dll`.
+
+## Adding Features Checklist
+
+1. UI/ViewModel logic → `src/RequesterMini/`
+2. Reusable logic → new or existing class library in `src/`, with tests in `tests/`
+3. Wire buttons via `Command="{Binding ...}"`, platform services via `Interaction<,>`
+4. Add new serializable types to `SourceGenerationContext`
+5. Run `dotnet build RequesterMini.slnx` and `dotnet test RequesterMini.slnx` before finishing
