@@ -159,4 +159,87 @@ public class JsonFileStoreTests : IDisposable
 
         Assert.True(store.IsPersistenceAvailable);
     }
+
+    [Fact]
+    public void MemoryBackend_SaveThenLoad_RoundTrips()
+    {
+        var store = new JsonStore<List<TestItem>>(new MemoryBackend(), TestSourceGenerationContext.Default.ListTestItem);
+        var items = new List<TestItem> { new("Alpha", 1), new("Beta", 2) };
+
+        store.Save(items);
+        var loaded = store.Load();
+
+        Assert.NotNull(loaded);
+        Assert.Equal(2, loaded.Count);
+        Assert.Equal("Alpha", loaded[0].Name);
+        Assert.Equal(2, loaded[1].Value);
+    }
+
+    [Fact]
+    public void MemoryBackend_IsPersistenceAvailable_AlwaysTrue()
+    {
+        var store = new JsonStore<List<TestItem>>(new MemoryBackend(), TestSourceGenerationContext.Default.ListTestItem);
+        var items = new List<TestItem> { new("X", 1) };
+
+        store.Save(items);
+        store.Load();
+
+        Assert.True(store.IsPersistenceAvailable);
+    }
+
+    [Fact]
+    public void FileBackend_Constructor_NullPath_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => new FileBackend(null!));
+    }
+
+    [Fact]
+    public void FileBackend_Load_FileDoesNotExist_ReturnsNull()
+    {
+        var backend = new FileBackend(Path.Combine(_tempDir, "nonexistent.json"));
+        Assert.Null(backend.Load());
+    }
+
+    [Fact]
+    public void FileBackend_Save_CreatesDirectoryAndFile()
+    {
+        var nestedPath = Path.Combine(_tempDir, "sub", "deep", "data.json");
+        var backend = new FileBackend(nestedPath);
+
+        backend.Save("{\"test\":1}");
+
+        Assert.True(File.Exists(nestedPath));
+        Assert.Equal("{\"test\":1}", File.ReadAllText(nestedPath));
+    }
+
+    [Fact]
+    public void FileBackend_OnLoadFailed_CreatesBackupFile()
+    {
+        File.WriteAllText(_filePath, "corrupt data");
+        var backend = new FileBackend(_filePath);
+
+        backend.OnLoadFailed();
+
+        Assert.True(File.Exists(_filePath + ".bak"));
+    }
+
+    [Fact]
+    public void JsonStore_CorruptData_DisablesPersistenceAndCallsOnLoadFailed()
+    {
+        var backend = new ThrowingBackend();
+        var store = new JsonStore<List<TestItem>>(backend, TestSourceGenerationContext.Default.ListTestItem);
+
+        store.Load();
+
+        Assert.False(store.IsPersistenceAvailable);
+        Assert.True(backend.OnLoadFailedCalled);
+    }
+}
+
+internal sealed class ThrowingBackend : IStoreBackend
+{
+    public bool OnLoadFailedCalled { get; private set; }
+    public string? Load() => throw new InvalidOperationException("Simulated load failure");
+    public void Save(string data) { }
+    public void OnLoadFailed() => OnLoadFailedCalled = true;
 }
