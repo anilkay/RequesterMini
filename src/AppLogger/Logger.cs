@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace AppLogger;
 
 public enum LogLevel
@@ -13,10 +11,8 @@ public enum LogLevel
 public static class Logger
 {
     private static readonly object Gate = new();
+    private static readonly List<ILogSink> _sinks = new();
 
-    private static string _logDirectory = string.Empty;
-    private static string _logPath = string.Empty;
-    private static long _maxLogFileBytes = 2 * 1024 * 1024; // 2 MB
     private static LogLevel _minimumLevel = LogLevel.Info;
     private static bool _initialized;
 
@@ -33,14 +29,7 @@ public static class Logger
 
         lock (Gate)
         {
-            _logDirectory = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                applicationName,
-                "logs");
-            _logPath = Path.Combine(_logDirectory, $"{applicationName.ToLowerInvariant()}.log");
             _minimumLevel = minimumLevel;
-            _maxLogFileBytes = maxFileSizeBytes;
-            _initialized = true;
 
             var envVarName = $"{applicationName.ToUpperInvariant().Replace(" ", "")}_LOG_LEVEL";
             var configuredLevel = Environment.GetEnvironmentVariable(envVarName);
@@ -48,6 +37,16 @@ public static class Logger
             {
                 _minimumLevel = parsedLevel;
             }
+
+            _sinks.Clear();
+            var logDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                applicationName,
+                "logs");
+            var logPath = Path.Combine(logDirectory, $"{applicationName.ToLowerInvariant()}.log");
+            _sinks.Add(new FileSink(logPath, maxFileSizeBytes));
+
+            _initialized = true;
         }
     }
 
@@ -70,6 +69,22 @@ public static class Logger
         }
     }
 
+    public static void AddSink(ILogSink sink)
+    {
+        lock (Gate)
+        {
+            _sinks.Add(sink);
+        }
+    }
+
+    public static void ClearSinks()
+    {
+        lock (Gate)
+        {
+            _sinks.Clear();
+        }
+    }
+
     public static void Debug(string message) => Write(LogLevel.Debug, message);
 
     public static void Info(string message) => Write(LogLevel.Info, message);
@@ -87,58 +102,19 @@ public static class Logger
 
     private static void Write(LogLevel level, string message)
     {
+        ILogSink[] sinks;
         lock (Gate)
         {
             if (!_initialized || level < _minimumLevel)
-            {
                 return;
-            }
+
+            sinks = _sinks.ToArray();
         }
 
-        try
+        var entry = new LogEntry(level, message, DateTime.UtcNow);
+        foreach (var sink in sinks)
         {
-            lock (Gate)
-            {
-                Directory.CreateDirectory(_logDirectory);
-                RotateIfNeeded();
-
-                var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
-                var levelLabel = level switch
-                {
-                    LogLevel.Debug => "DEBUG",
-                    LogLevel.Info => "INFO",
-                    LogLevel.Warning => "WARNING",
-                    LogLevel.Error => "ERROR",
-                    _ => "UNKNOWN"
-                };
-                File.AppendAllText(_logPath, $"[{timestamp}] [{levelLabel}] {message}{Environment.NewLine}");
-            }
+            sink.Write(entry);
         }
-        catch
-        {
-            // Logging must never crash the app.
-        }
-    }
-
-    private static void RotateIfNeeded()
-    {
-        if (!File.Exists(_logPath))
-        {
-            return;
-        }
-
-        var info = new FileInfo(_logPath);
-        if (info.Length <= _maxLogFileBytes)
-        {
-            return;
-        }
-
-        var archivePath = _logPath + ".1";
-        if (File.Exists(archivePath))
-        {
-            File.Delete(archivePath);
-        }
-
-        File.Move(_logPath, archivePath);
     }
 }
