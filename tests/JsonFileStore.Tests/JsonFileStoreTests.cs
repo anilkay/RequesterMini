@@ -234,6 +234,48 @@ public class JsonFileStoreTests : IDisposable
         Assert.False(store.IsPersistenceAvailable);
         Assert.True(backend.OnLoadFailedCalled);
     }
+
+    // ── New tests ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void JsonStore_SaveFailure_DisablesPersistence()
+    {
+        var backend = new ThrowingOnSaveBackend();
+        var store = new JsonStore<List<TestItem>>(backend, TestSourceGenerationContext.Default.ListTestItem);
+
+        store.Save(new List<TestItem> { new("Item", 1) });
+
+        Assert.False(store.IsPersistenceAvailable);
+    }
+
+    [Fact]
+    public void FileBackend_OnLoadFailed_WithNonExistentFile_DoesNotThrow()
+    {
+        var backend = new FileBackend(Path.Combine(_tempDir, "nonexistent.json"));
+
+        var ex = Record.Exception(() => backend.OnLoadFailed());
+
+        Assert.Null(ex);
+    }
+
+    [Fact]
+    public void FileBackend_Save_CreatesCorrectJsonContent()
+    {
+        var backend = new FileBackend(_filePath);
+        const string jsonContent = "[{\"Name\":\"Test\",\"Value\":42}]";
+
+        backend.Save(jsonContent);
+
+        Assert.True(File.Exists(_filePath));
+        Assert.Equal(jsonContent, File.ReadAllText(_filePath));
+    }
+}
+
+internal sealed class ThrowingOnSaveBackend : IStoreBackend
+{
+    public string? Load() => null;
+    public void Save(string data) => throw new IOException("Simulated save failure");
+    public void OnLoadFailed() { }
 }
 
 internal sealed class ThrowingBackend : IStoreBackend

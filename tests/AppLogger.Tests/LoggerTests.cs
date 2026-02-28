@@ -134,6 +134,114 @@ public class LoggerTests
         Assert.True(File.Exists(logPath), "New log file should exist after rotation");
     }
 
+    // ── New tests ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Initialize_EnvironmentVariableOverridesMinimumLevel()
+    {
+        // The env-var name is derived as "{APPNAME}_LOG_LEVEL"
+        const string envVarName = "TESTAPP_LOG_LEVEL";
+        try
+        {
+            Environment.SetEnvironmentVariable(envVarName, "Debug");
+            Logger.Initialize("TestApp");
+
+            Assert.Equal(LogLevel.Debug, Logger.MinimumLevel);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(envVarName, null);
+        }
+    }
+
+    [Fact]
+    public void Error_WithException_IncludesExceptionInMessage()
+    {
+        Logger.Initialize("TestApp");
+        var sink = new MemorySink();
+        Logger.AddSink(sink);
+        Logger.SetMinimumLevel(LogLevel.Error);
+
+        Logger.Error("msg", new InvalidOperationException("boom"));
+
+        var entry = Assert.Single(sink.Entries);
+        Assert.Contains("msg", entry.Message);
+        Assert.Contains("boom", entry.Message);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void FileSink_Constructor_NullOrEmptyPath_Throws(string? path)
+    {
+        Assert.ThrowsAny<ArgumentException>(() => new FileSink(path!));
+    }
+
+    [Fact]
+    public void Logger_Initialize_CalledTwice_ResetsSinks()
+    {
+        Logger.Initialize("TestApp");
+        var sink = new MemorySink();
+        Logger.AddSink(sink);
+
+        // Second Initialize clears all previously registered sinks
+        Logger.Initialize("TestApp");
+        Logger.Info("second log");
+
+        Assert.Empty(sink.Entries);
+    }
+
+    [Fact]
+    public void Logger_BelowMinimumLevel_FileSinkNotWritten()
+    {
+        // Use a unique app name so the log path is isolated from other test runs
+        var appName = "LogFilter" + Guid.NewGuid().ToString("N");
+        var logPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            appName,
+            "logs",
+            $"{appName.ToLowerInvariant()}.log");
+
+        try
+        {
+            Logger.Initialize(appName, minimumLevel: LogLevel.Error);
+            Logger.Info("should not appear");
+
+            Assert.True(
+                !File.Exists(logPath) || !File.ReadAllText(logPath).Contains("should not appear"),
+                "Info message must not be written when minimum level is Error");
+        }
+        finally
+        {
+            var appDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                appName);
+            if (Directory.Exists(appDir))
+                Directory.Delete(appDir, recursive: true);
+
+            // Restore logger to a predictable state for subsequent tests
+            Logger.Initialize("TestApp");
+        }
+    }
+
+    [Theory]
+    [InlineData(LogLevel.Debug)]
+    [InlineData(LogLevel.Info)]
+    [InlineData(LogLevel.Warning)]
+    [InlineData(LogLevel.Error)]
+    public void ConsoleSink_Write_AllLevels_DoesNotThrow(LogLevel level)
+    {
+        var sink = new ConsoleSink();
+        var entry = new LogEntry(level, "test message", DateTime.UtcNow);
+
+        var ex = Record.Exception(() => sink.Write(entry));
+
+        Assert.Null(ex);
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
     private sealed class MemorySink : ILogSink
     {
         public List<LogEntry> Entries { get; } = new();

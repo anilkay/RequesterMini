@@ -141,6 +141,92 @@ public class CurlCommandBuilderTests
         Assert.Contains("-X PATCH", result);
     }
 
+    // ── New tests ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void SetMethod_Null_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            new CurlCommandBuilder().SetMethod(null!));
+    }
+
+    [Fact]
+    public void SetMethod_Whitespace_Throws()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            new CurlCommandBuilder().SetMethod("   "));
+    }
+
+    [Fact]
+    public void SetUrl_Null_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            new CurlCommandBuilder().SetUrl(null!));
+    }
+
+    [Fact]
+    public void SetUrl_Whitespace_Throws()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            new CurlCommandBuilder().SetUrl("   "));
+    }
+
+    [Fact]
+    public void SetBody_NullBody_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            new CurlCommandBuilder()
+                .SetUrl("https://example.com")
+                .SetMethod("POST")
+                .SetBody(null!, BodyType.Json));
+    }
+
+    [Fact]
+    public void AddHeader_NullKey_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            new CurlCommandBuilder()
+                .SetUrl("https://example.com")
+                .SetMethod("GET")
+                .AddHeader(null!, "val"));
+    }
+
+    [Fact]
+    public void AddHeader_WhitespaceKey_Throws()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            new CurlCommandBuilder()
+                .SetUrl("https://example.com")
+                .SetMethod("GET")
+                .AddHeader("   ", "val"));
+    }
+
+    [Fact]
+    public void AddHeader_NullValue_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            new CurlCommandBuilder()
+                .SetUrl("https://example.com")
+                .SetMethod("GET")
+                .AddHeader("key", null!));
+    }
+
+    [Fact]
+    public void Build_MultipleHeaders_AllPresentInOutput()
+    {
+        var result = new CurlCommandBuilder()
+            .SetMethod("GET")
+            .SetUrl("https://example.com")
+            .AddHeader("Authorization", "Bearer token")
+            .AddHeader("Accept", "application/json")
+            .AddHeader("X-Request-Id", "abc123")
+            .Build();
+
+        Assert.Contains("-H 'Authorization: Bearer token'", result);
+        Assert.Contains("-H 'Accept: application/json'", result);
+        Assert.Contains("-H 'X-Request-Id: abc123'", result);
+    }
+
     [Theory]
     [InlineData(BodyType.Json, "application/json")]
     [InlineData(BodyType.Xml, "application/xml")]
