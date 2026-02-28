@@ -11,6 +11,12 @@
         Title="RequesterMini"
         Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
 
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Ctrl+Enter" Command="{Binding ClickCommand}"/>
+        <KeyBinding Gesture="Ctrl+W" Command="{Binding CancelCommand}"/>
+        <KeyBinding Gesture="Ctrl+E" Command="{Binding ExportCurlCommand}"/>
+    </Window.KeyBindings>
+
     <Design.DataContext>
         <vm:MainWindowViewModel/>
     </Design.DataContext>
