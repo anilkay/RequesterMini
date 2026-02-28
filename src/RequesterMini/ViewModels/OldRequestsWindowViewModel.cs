@@ -67,7 +67,7 @@ public class OldRequestsWindowViewModel : ViewModelBase
         var items = _store.Load();
         if (items is not null)
         {
-            foreach (var item in items)
+            foreach (var item in items.TakeLast(50))
             {
                 OldRequests.Add(item);
             }
@@ -84,6 +84,8 @@ public class OldRequestsWindowViewModel : ViewModelBase
             if (oldRequestObject is not null)
             {
                 OldRequests.Add(oldRequestObject);
+                if (OldRequests.Count > 50)
+                    OldRequests.RemoveAt(0);
                 _store.Save(OldRequests.ToList());
             }
         });
