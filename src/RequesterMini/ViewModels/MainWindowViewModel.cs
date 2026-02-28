@@ -87,6 +87,12 @@ public class MainWindowViewModel : ViewModelBase
                 field, value);
     } = "";
 
+    internal string CopyFeedback
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "";
+
     internal string SelectedHttpMethod
     {
         get;
@@ -130,6 +136,10 @@ public class MainWindowViewModel : ViewModelBase
 
             var curl = builder.Build();
             CopyToClipboard.Handle(curl).Subscribe();
+            CopyFeedback = "✓ Copied!";
+            Observable.Timer(TimeSpan.FromSeconds(2))
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(_ => CopyFeedback = "");
         });
 
         MessageBus.Current.Listen<string>(MessageBusConstants.LoadRequest).Subscribe(value =>

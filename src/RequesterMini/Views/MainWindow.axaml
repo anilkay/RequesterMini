@@ -60,6 +60,10 @@
                     <Button Command="{Binding ExportCurlCommand}" 
                             Content="Export cURL"
                             VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding CopyFeedback}"
+                               Foreground="#4EC94E"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"/>
                 </StackPanel>
             </Grid>
 
