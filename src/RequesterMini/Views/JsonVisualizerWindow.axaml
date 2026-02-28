@@ -6,15 +6,16 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:DataType="vm:JsonVisualizerWindowViewModel"
              x:Class="RequesterMini.Views.JsonVisualizerWindow">
-    
+
     <Design.DataContext>
         <vm:JsonVisualizerWindowViewModel/>
     </Design.DataContext>
-    
+
     <ScrollViewer>
-        <TextBlock Text="{Binding PrettyJsonValue, Mode=TwoWay}" 
-                   FontFamily="Consolas, monospace" 
-                   Margin="10" 
-                   TextWrapping="Wrap"/>
+        <SelectableTextBlock x:Name="JsonTextBlock"
+                             FontFamily="Consolas, monospace"
+                             FontSize="13"
+                             Margin="12"
+                             TextWrapping="Wrap" />
     </ScrollViewer>
 </UserControl>

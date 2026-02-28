@@ -1,45 +1,39 @@
 using System;
-using ReactiveUI;
+using System.IO;
+using System.Text;
 using System.Text.Json;
+using ReactiveUI;
 using RequesterMini.Constants;
 
 namespace RequesterMini.ViewModels;
 
-public class JsonVisualizerWindowViewModel : ViewModelBase 
+public class JsonVisualizerWindowViewModel : ViewModelBase
 {
-
-    public JsonVisualizerWindowViewModel(){
-        MessageBus.Current.Listen<string>(MessageBusConstants.NewJsonGenerated).Subscribe(value => 
-        {
-
-
-            if(value==null)
-            {
-                return;
-            }
-
-           
-            try 
-            { 
-                PrettyJsonValue=value;
-            }
-            
-            catch(JsonException e)
-            { 
-                PrettyJsonValue=e.Message;
-            }
-        });
-    }
-
-    private string _prettyJsonValue = "";
-
-    public string PrettyJsonValue
+    internal string PrettyJsonValue
     {
-        get => _prettyJsonValue;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _prettyJsonValue, value);
-        }
-    }
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "";
 
+    public JsonVisualizerWindowViewModel()
+    {
+        MessageBus.Current.Listen<string>(MessageBusConstants.NewJsonGenerated)
+            .Subscribe(value =>
+            {
+                if (value is null) return;
+                try
+                {
+                    using var doc = JsonDocument.Parse(value);
+                    using var ms = new MemoryStream();
+                    using var writer = new Utf8JsonWriter(ms, new JsonWriterOptions { Indented = true });
+                    doc.WriteTo(writer);
+                    writer.Flush();
+                    PrettyJsonValue = Encoding.UTF8.GetString(ms.ToArray());
+                }
+                catch (JsonException)
+                {
+                    PrettyJsonValue = value;
+                }
+            });
+    }
 }
