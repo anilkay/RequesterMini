@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\JsonFileStore\JsonFileStore.csproj" />
+    <ProjectReference Include="..\..\src\JsonFileStore\JsonFileStore.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,0 +1,18 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/RequesterMini/RequesterMini.csproj" />
+    <Project Path="src/AppLogger/AppLogger.csproj" />
+    <Project Path="src/CurlExporter/CurlExporter.csproj" />
+    <Project Path="src/JsonFileStore/JsonFileStore.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AppLogger.Tests/AppLogger.Tests.csproj" />
+    <Project Path="tests/CurlExporter.Tests/CurlExporter.Tests.csproj" />
+    <Project Path="tests/JsonFileStore.Tests/JsonFileStore.Tests.csproj" />
+  </Folder>
+</Solution>
