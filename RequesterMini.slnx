@@ -1,4 +1,7 @@
 <Solution>
+  <Properties>
+    <Property Name="StartupProject" Value="src/RequesterMini/RequesterMini.csproj" />
+  </Properties>
   <Configurations>
     <Platform Name="Any CPU" />
     <Platform Name="x64" />
