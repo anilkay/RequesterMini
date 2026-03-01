@@ -152,8 +152,7 @@ public class MainWindowViewModel : ViewModelBase
                 .Do(filePath =>
                 {
                     if (string.IsNullOrEmpty(filePath)) return;
-                    var content = File.ReadAllText(filePath);
-                    var req = BruParser.Parse(content);
+                    var req = BrunoFileImporter.ParseFile(filePath);
                     Url = req.Url;
                     SelectedHttpMethod = req.Method;
                     Body = req.Body;

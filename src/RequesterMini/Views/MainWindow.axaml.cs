@@ -52,7 +52,7 @@ public partial class MainWindow : Window
                         AllowMultiple = false,
                         FileTypeFilter = new List<FilePickerFileType>
                         {
-                            new FilePickerFileType("Bruno Request") { Patterns = ["*.bru"] }
+                            new FilePickerFileType("Bruno Request") { Patterns = ["*.bru", "*.yml", "*.yaml"] }
                         }
                     });
 
