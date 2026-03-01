@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Reactive;
 using ReactiveUI;
 using System.Collections.Generic;
@@ -11,6 +12,7 @@ using RequesterMini.Utils;
 using RequesterMini.Models;
 using AppLogger;
 using CurlExporter;
+using BrunoImporter;
 using OneOf;
 using System.Diagnostics.CodeAnalysis;
 using System.Reactive.Linq;
@@ -32,8 +34,10 @@ public class MainWindowViewModel : ViewModelBase
     internal ReactiveCommand<Unit, Unit> CancelCommand { get; }
     internal ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
     internal ReactiveCommand<Unit, Unit> ExportCurlCommand { get; }
+    internal ReactiveCommand<Unit, Unit> ImportBruCommand { get; }
 
     internal Interaction<string, Unit> CopyToClipboard { get; } = new();
+    internal Interaction<Unit, string?> OpenBruFile { get; } = new();
 
     internal ObservableCollection<string> HttpMethods { get; } = new(HttpConstants.MethodValues);
 
@@ -141,6 +145,28 @@ public class MainWindowViewModel : ViewModelBase
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(_ => CopyFeedback = "");
         });
+
+        ImportBruCommand = ReactiveCommand.CreateFromObservable(() =>
+            OpenBruFile.Handle(Unit.Default)
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Do(filePath =>
+                {
+                    if (string.IsNullOrEmpty(filePath)) return;
+                    var content = File.ReadAllText(filePath);
+                    var req = BruParser.Parse(content);
+                    Url = req.Url;
+                    SelectedHttpMethod = req.Method;
+                    Body = req.Body;
+                    SelectedBodyType = req.BodyType;
+                    Headers.Clear();
+                    foreach (var kvp in req.Headers)
+                    {
+                        var headerItem = new HeaderItem { Key = kvp.Key, Value = kvp.Value };
+                        headerItem.OnRemove = RemoveHeader;
+                        Headers.Add(headerItem);
+                    }
+                })
+                .Select(_ => Unit.Default));
 
         MessageBus.Current.Listen<string>(MessageBusConstants.LoadRequest).Subscribe(value =>
         {
