@@ -159,12 +159,19 @@ public class MainWindowViewModel : ViewModelBase
                     Body = req.Body;
                     SelectedBodyType = req.BodyType;
                     Headers.Clear();
+                    var headerDict = new Dictionary<string, string>();
                     foreach (var kvp in req.Headers)
                     {
                         var headerItem = new HeaderItem { Key = kvp.Key, Value = kvp.Value };
                         headerItem.OnRemove = RemoveHeader;
                         Headers.Add(headerItem);
+                        headerDict[kvp.Key] = kvp.Value;
                     }
+
+                    var dto = new OldRequestDto(req.Method, req.Url, req.Body, "", "", headerDict);
+                    MessageBus.Current.SendMessage(
+                        JsonSerializer.Serialize(dto, SourceGenerationContext.Default.OldRequestDto),
+                        MessageBusConstants.NewRequest);
                 })
                 .Select(_ => Unit.Default));
 
