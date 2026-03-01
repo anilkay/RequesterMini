@@ -54,6 +54,11 @@ public static class BruYamlParser
             i++;
         }
 
+        if (method.StartsWith("'") && method.EndsWith("'") && method.Length > 2)
+        {
+            method = method[1..^1];
+        }
+
         return new BruRequest(name, method, url, headers, body, bodyType);
     }
 
