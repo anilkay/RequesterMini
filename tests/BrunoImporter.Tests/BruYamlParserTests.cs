@@ -135,7 +135,7 @@ public class BruYamlParserTests
 public class BrunoFileImporterTests
 {
     [Fact]
-    public void Parse_BruContent_UsesBruParser()
+    public void Parse_BruContent_ParsesCorrectly()
     {
         var bruContent = """
             get {
