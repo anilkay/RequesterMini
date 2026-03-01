@@ -12,10 +12,12 @@
     <Project Path="src/AppLogger/AppLogger.csproj" />
     <Project Path="src/CurlExporter/CurlExporter.csproj" />
     <Project Path="src/JsonFileStore/JsonFileStore.csproj" />
+    <Project Path="src/BrunoImporter/BrunoImporter.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/AppLogger.Tests/AppLogger.Tests.csproj" />
     <Project Path="tests/CurlExporter.Tests/CurlExporter.Tests.csproj" />
     <Project Path="tests/JsonFileStore.Tests/JsonFileStore.Tests.csproj" />
+    <Project Path="tests/BrunoImporter.Tests/BrunoImporter.Tests.csproj" />
   </Folder>
 </Solution>

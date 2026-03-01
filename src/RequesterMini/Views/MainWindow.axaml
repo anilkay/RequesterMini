@@ -15,6 +15,7 @@
         <KeyBinding Gesture="Ctrl+Enter" Command="{Binding ClickCommand}"/>
         <KeyBinding Gesture="Ctrl+W" Command="{Binding CancelCommand}"/>
         <KeyBinding Gesture="Ctrl+E" Command="{Binding ExportCurlCommand}"/>
+        <KeyBinding Gesture="Ctrl+I" Command="{Binding ImportBruCommand}"/>
     </Window.KeyBindings>
 
     <Design.DataContext>
@@ -59,6 +60,9 @@
                             VerticalAlignment="Center"/>
                     <Button Command="{Binding ExportCurlCommand}" 
                             Content="Export cURL"
+                            VerticalAlignment="Center"/>
+                    <Button Command="{Binding ImportBruCommand}"
+                            Content="Import .bru"
                             VerticalAlignment="Center"/>
                     <TextBlock Text="{Binding CopyFeedback}"
                                Foreground="#4EC94E"

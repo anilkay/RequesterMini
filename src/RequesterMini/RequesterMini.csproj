@@ -44,5 +44,6 @@
     <ProjectReference Include="..\AppLogger\AppLogger.csproj" />
     <ProjectReference Include="..\CurlExporter\CurlExporter.csproj" />
     <ProjectReference Include="..\JsonFileStore\JsonFileStore.csproj" />
+    <ProjectReference Include="..\BrunoImporter\BrunoImporter.csproj" />
   </ItemGroup>
 </Project>
