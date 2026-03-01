@@ -4,7 +4,7 @@ public static class BruParser
 {
     private static readonly HashSet<string> HttpMethodBlocks = new(StringComparer.OrdinalIgnoreCase)
     {
-        "get", "post", "put", "patch", "delete", "head", "options"
+        "get", "post", "put", "patch", "delete", "head", "options", "trace", "connect"
     };
 
     private static readonly Dictionary<string, string> BodyTypeMap = new(StringComparer.OrdinalIgnoreCase)
@@ -132,6 +132,14 @@ public static class BruParser
                 bodyType = explicitType;
             return;
         }
+
+        // plain "body" block — defaults to JSON per Bruno spec
+        if (lowerBlock == "body")
+        {
+            body = string.Join("\n", blockLines).Trim();
+            bodyType = "Json";
+            return;
+        }
     }
 
     private static Dictionary<string, string> ParseKeyValues(List<string> lines)
@@ -142,6 +150,10 @@ public static class BruParser
         {
             var line = rawLine.Trim();
             if (string.IsNullOrEmpty(line) || line.StartsWith('#'))
+                continue;
+
+            // Skip disabled entries (prefixed with ~)
+            if (line.StartsWith('~'))
                 continue;
 
             var colonIdx = line.IndexOf(':');

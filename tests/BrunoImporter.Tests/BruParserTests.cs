@@ -228,4 +228,85 @@ public class BruParserTests
 
         Assert.Equal("https://api.example.com/v1/users", result.Url);
     }
+
+    [Fact]
+    public void Parse_PlainBodyBlock_DefaultsToJson()
+    {
+        var bru = """
+            post {
+              url: https://api.example.com/users
+            }
+
+            body {
+              {
+                "username": "john",
+                "password": "secret"
+              }
+            }
+            """;
+
+        var result = BruParser.Parse(bru);
+
+        Assert.Equal("Json", result.BodyType);
+        Assert.Contains("\"username\": \"john\"", result.Body);
+    }
+
+    [Fact]
+    public void Parse_DisabledHeaders_AreSkipped()
+    {
+        var bru = """
+            get {
+              url: https://api.example.com/test
+            }
+
+            headers {
+              Content-Type: application/json
+              ~Authorization: Bearer old-token
+              Accept: text/html
+            }
+            """;
+
+        var result = BruParser.Parse(bru);
+
+        Assert.Equal(2, result.Headers.Count);
+        Assert.Equal("application/json", result.Headers["Content-Type"]);
+        Assert.Equal("text/html", result.Headers["Accept"]);
+        Assert.False(result.Headers.ContainsKey("Authorization"));
+    }
+
+    [Fact]
+    public void Parse_TraceMethod_ExtractsMethod()
+    {
+        var bru = """
+            trace {
+              url: https://api.example.com/debug
+            }
+            """;
+
+        var result = BruParser.Parse(bru);
+
+        Assert.Equal("TRACE", result.Method);
+    }
+
+    [Fact]
+    public void Parse_BodyXml_ExtractsContent()
+    {
+        var bru = """
+            post {
+              url: https://api.example.com/xml
+              body: xml
+            }
+
+            body:xml {
+              <root>
+                <name>Test</name>
+              </root>
+            }
+            """;
+
+        var result = BruParser.Parse(bru);
+
+        Assert.Contains("<name>Test</name>", result.Body);
+        Assert.Equal("None", result.BodyType);
+    }
 }
