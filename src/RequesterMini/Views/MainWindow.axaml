@@ -110,6 +110,46 @@
                                  FontFamily="Consolas, monospace"/>
                     </Grid>
                 </TabItem>
+                <TabItem Header="Auth">
+                    <StackPanel Margin="0,8,0,0" Spacing="10">
+                        <Grid ColumnDefinitions="80, *">
+                            <TextBlock Text="Type" VerticalAlignment="Center"/>
+                            <ComboBox Grid.Column="1"
+                                      ItemsSource="{Binding AuthTypes}"
+                                      SelectedItem="{Binding SelectedAuthType, Mode=TwoWay}"
+                                      Width="150"/>
+                        </Grid>
+
+                        <!-- Bearer Token -->
+                        <Grid ColumnDefinitions="80, *" IsVisible="{Binding IsBearerAuth}">
+                            <TextBlock Text="Token" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1"
+                                     Text="{Binding BearerToken}"
+                                     Watermark="Enter bearer token"/>
+                        </Grid>
+
+                        <!-- Basic Auth -->
+                        <StackPanel Spacing="8" IsVisible="{Binding IsBasicAuth}">
+                            <Grid ColumnDefinitions="80, *">
+                                <TextBlock Text="Username" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding BasicUsername}"
+                                         Watermark="Username"/>
+                            </Grid>
+                            <Grid ColumnDefinitions="80, *">
+                                <TextBlock Text="Password" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding BasicPassword}"
+                                         Watermark="Password"
+                                         PasswordChar="*"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <Button Classes="primary"
+                                Command="{Binding ApplyAuthCommand}"
+                                Content="Apply Auth"/>
+                    </StackPanel>
+                </TabItem>
             </TabControl>
 
             <!-- Response Section -->

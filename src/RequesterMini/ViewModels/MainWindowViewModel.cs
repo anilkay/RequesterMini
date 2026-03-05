@@ -1,5 +1,7 @@
 using System;
+using System.Linq;
 using System.Reactive;
+using System.Text;
 using ReactiveUI;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -32,6 +34,7 @@ public class MainWindowViewModel : ViewModelBase
     internal ReactiveCommand<Unit, Unit> CancelCommand { get; }
     internal ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
     internal ReactiveCommand<Unit, Unit> ExportCurlCommand { get; }
+    internal ReactiveCommand<Unit, Unit> ApplyAuthCommand { get; }
 
     internal Interaction<string, Unit> CopyToClipboard { get; } = new();
 
@@ -99,9 +102,54 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = HttpConstants.SelectedMethod;
 
+    internal ObservableCollection<string> AuthTypes { get; } = new(HttpConstants.AuthTypeValues);
+
+    internal string SelectedAuthType
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = HttpConstants.DefaultAuthType;
+
+    internal string BearerToken
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "";
+
+    internal string BasicUsername
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "";
+
+    internal string BasicPassword
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "";
+
+    internal bool IsBearerAuth
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = false;
+
+    internal bool IsBasicAuth
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = false;
+
     [RequiresUnreferencedCode("ReactiveCommand methods use reflection.")]
     public MainWindowViewModel()
     {
+        this.WhenAnyValue(x => x.SelectedAuthType)
+            .Subscribe(type =>
+            {
+                IsBearerAuth = type == HttpConstants.AuthTypeBearerToken;
+                IsBasicAuth = type == HttpConstants.AuthTypeBasic;
+            });
+
         CancelCommand = ReactiveCommand.Create(() =>
         {
             _cts?.Cancel();
@@ -140,6 +188,31 @@ public class MainWindowViewModel : ViewModelBase
             Observable.Timer(TimeSpan.FromSeconds(2))
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(_ => CopyFeedback = "");
+        });
+
+        ApplyAuthCommand = ReactiveCommand.Create(() =>
+        {
+            var existing = Headers.FirstOrDefault(h =>
+                string.Equals(h.Key, "Authorization", StringComparison.OrdinalIgnoreCase));
+            if (existing is not null)
+                Headers.Remove(existing);
+
+            if (SelectedAuthType == HttpConstants.AuthTypeBearerToken
+                && !string.IsNullOrWhiteSpace(BearerToken))
+            {
+                var header = new HeaderItem { Key = "Authorization", Value = $"Bearer {BearerToken}" };
+                header.OnRemove = RemoveHeader;
+                Headers.Add(header);
+            }
+            else if (SelectedAuthType == HttpConstants.AuthTypeBasic
+                     && !string.IsNullOrWhiteSpace(BasicUsername))
+            {
+                var encoded = Convert.ToBase64String(
+                    Encoding.UTF8.GetBytes($"{BasicUsername}:{BasicPassword}"));
+                var header = new HeaderItem { Key = "Authorization", Value = $"Basic {encoded}" };
+                header.OnRemove = RemoveHeader;
+                Headers.Add(header);
+            }
         });
 
         MessageBus.Current.Listen<string>(MessageBusConstants.LoadRequest).Subscribe(value =>
