@@ -45,7 +45,11 @@ public class MainWindowViewModel : ViewModelBase
 
     internal ObservableCollection<HeaderItem> Headers { get; } = [];
 
-    internal string SelectedBodyType { get; set; } = HttpConstants.SelectedBodyType;
+    internal string SelectedBodyType
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = HttpConstants.SelectedBodyType;
 
 
     internal string Url
@@ -59,6 +63,32 @@ public class MainWindowViewModel : ViewModelBase
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = "";
+
+    // JSON validation state for the Body editor (only meaningful when SelectedBodyType is Json).
+    internal bool IsBodyJsonInvalid
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    internal string BodyJsonError
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "";
+
+    // Char range of the offending token; consumed by the View to select/highlight it. -1 = none.
+    internal int BodyErrorStart
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = -1;
+
+    internal int BodyErrorEnd
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = -1;
 
 
     internal string ResponseStatusCode
@@ -256,6 +286,12 @@ public class MainWindowViewModel : ViewModelBase
             MessageBus.Current.SendMessage(JsonSerializer.Serialize(oldRequestDto, SourceGenerationContext.Default.OldRequestDto), MessageBusConstants.NewRequest);
 
         });
+
+        // Validate the body as JSON while the user types (debounced so we don't parse on every keystroke).
+        this.WhenAnyValue(x => x.Body, x => x.SelectedBodyType)
+            .Throttle(TimeSpan.FromMilliseconds(400))
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(_ => ValidateBody());
     }
 
     private void RemoveHeader(HeaderItem header)
@@ -263,4 +299,96 @@ public class MainWindowViewModel : ViewModelBase
         Headers.Remove(header);
     }
 
+    private void ValidateBody()
+    {
+        if (!string.Equals(SelectedBodyType, "Json", StringComparison.OrdinalIgnoreCase)
+            || string.IsNullOrWhiteSpace(Body))
+        {
+            ClearBodyError();
+            return;
+        }
+
+        try
+        {
+            using var _ = JsonDocument.Parse(Body);
+            ClearBodyError();
+        }
+        catch (JsonException ex)
+        {
+            int line = (int)(ex.LineNumber ?? 0);
+            int col = (int)(ex.BytePositionInLine ?? 0);
+            int offset = ToCharOffset(Body, line, col);
+            (int start, int end) = TokenRange(Body, offset);
+
+            BodyJsonError = $"⚠ Invalid JSON — Line {line + 1}, Col {col + 1}: {CleanJsonMessage(ex.Message)}";
+            IsBodyJsonInvalid = true;
+            BodyErrorStart = start;
+            BodyErrorEnd = end;
+        }
+    }
+
+    private void ClearBodyError()
+    {
+        IsBodyJsonInvalid = false;
+        BodyJsonError = "";
+        BodyErrorStart = -1;
+        BodyErrorEnd = -1;
+    }
+
+    // System.Text.Json reports errors as (line, byte-in-line). Convert to a char index in the string.
+    private static int ToCharOffset(string text, int line, int byteInLine)
+    {
+        int idx = 0;
+        for (int currentLine = 0; currentLine < line && idx < text.Length; idx++)
+        {
+            if (text[idx] == '\n') currentLine++;
+        }
+
+        long bytesLeft = byteInLine;
+        while (bytesLeft > 0 && idx < text.Length && text[idx] != '\n')
+        {
+            bytesLeft -= Utf8ByteLength(text, idx, out int charsConsumed);
+            idx += charsConsumed;
+        }
+
+        return idx;
+    }
+
+    private static int Utf8ByteLength(string text, int index, out int charsConsumed)
+    {
+        if (char.IsHighSurrogate(text[index]) && index + 1 < text.Length && char.IsLowSurrogate(text[index + 1]))
+        {
+            charsConsumed = 2;
+            return 4;
+        }
+
+        charsConsumed = 1;
+        char c = text[index];
+        if (c < 0x80) return 1;
+        if (c < 0x800) return 2;
+        return 3;
+    }
+
+    // Select the whitespace-delimited token at the error offset so the highlight lands on the culprit.
+    private static (int start, int end) TokenRange(string text, int offset)
+    {
+        if (text.Length == 0) return (-1, -1);
+        if (offset >= text.Length) return (text.Length - 1, text.Length);
+
+        int end = offset;
+        while (end < text.Length && !char.IsWhiteSpace(text[end]) && "{}[]:,".IndexOf(text[end]) < 0)
+        {
+            end++;
+        }
+
+        if (end == offset) end = Math.Min(offset + 1, text.Length);
+        return (offset, end);
+    }
+
+    // JsonException.Message tacks on " LineNumber: X | BytePositionInLine: Y." — we show those ourselves.
+    private static string CleanJsonMessage(string message)
+    {
+        int idx = message.IndexOf(" LineNumber:", StringComparison.Ordinal);
+        return idx >= 0 ? message[..idx].TrimEnd() : message;
+    }
 }

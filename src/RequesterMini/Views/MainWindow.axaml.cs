@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reactive;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Platform.Storage;
 using RequesterMini.ViewModels;
@@ -64,6 +65,20 @@ public partial class MainWindow : Window
 
                 interaction.SetOutput(filePath);
             });
+        }
+    }
+
+    // Clicking the JSON error message jumps to and selects the offending token in the body editor.
+    private void OnBodyErrorTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+
+        int length = BodyTextBox.Text?.Length ?? 0;
+        if (vm.BodyErrorStart >= 0 && vm.BodyErrorEnd > vm.BodyErrorStart && vm.BodyErrorEnd <= length)
+        {
+            BodyTextBox.SelectionStart = vm.BodyErrorStart;
+            BodyTextBox.SelectionEnd = vm.BodyErrorEnd;
+            BodyTextBox.Focus();
         }
     }
 }

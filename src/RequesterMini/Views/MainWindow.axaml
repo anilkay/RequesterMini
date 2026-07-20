@@ -100,18 +100,41 @@
                     </Grid>
                 </TabItem>
                 <TabItem Header="Body">
-                    <Grid RowDefinitions="Auto, *">
-                        <ComboBox Grid.Row="0" 
-                                  ItemsSource="{Binding BodyTypes}" 
-                                  SelectedItem="{Binding SelectedBodyType, Mode=TwoWay}" 
-                                  Width="150" 
+                    <Grid RowDefinitions="Auto, *, Auto">
+                        <Grid.Styles>
+                            <Style Selector="TextBox.invalid /template/ Border#PART_BorderElement">
+                                <Setter Property="BorderBrush" Value="#F14C4C"/>
+                            </Style>
+                            <Style Selector="TextBox.invalid:pointerover /template/ Border#PART_BorderElement">
+                                <Setter Property="BorderBrush" Value="#F14C4C"/>
+                            </Style>
+                            <Style Selector="TextBox.invalid:focus /template/ Border#PART_BorderElement">
+                                <Setter Property="BorderBrush" Value="#F14C4C"/>
+                            </Style>
+                        </Grid.Styles>
+                        <ComboBox Grid.Row="0"
+                                  ItemsSource="{Binding BodyTypes}"
+                                  SelectedItem="{Binding SelectedBodyType, Mode=TwoWay}"
+                                  Width="150"
                                   Margin="0,0,0,10"/>
-                        <TextBox Grid.Row="1" 
-                                 Text="{Binding Body}" 
-                                 AcceptsReturn="True" 
-                                 Watermark="Enter request body" 
+                        <TextBox Grid.Row="1"
+                                 Name="BodyTextBox"
+                                 Classes.invalid="{Binding IsBodyJsonInvalid}"
+                                 Text="{Binding Body}"
+                                 AcceptsReturn="True"
+                                 Watermark="Enter request body"
                                  TextWrapping="Wrap"
                                  FontFamily="Consolas, monospace"/>
+                        <TextBlock Grid.Row="2"
+                                   Text="{Binding BodyJsonError}"
+                                   IsVisible="{Binding IsBodyJsonInvalid}"
+                                   Foreground="#F14C4C"
+                                   TextWrapping="Wrap"
+                                   FontSize="12"
+                                   Cursor="Hand"
+                                   ToolTip.Tip="Click to jump to the error"
+                                   Tapped="OnBodyErrorTapped"
+                                   Margin="2,6,0,0"/>
                     </Grid>
                 </TabItem>
             </TabControl>
