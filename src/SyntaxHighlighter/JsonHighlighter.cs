@@ -1,26 +1,20 @@
-using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using Avalonia.Media;
 
-namespace RequesterMini.Utils;
+namespace SyntaxHighlighter;
 
-internal static partial class JsonColorizer
+/// <summary>
+/// Tokenizes JSON into semantic <see cref="HighlightSegment"/>s. Purely lexical (regex-based) so it
+/// highlights even slightly malformed input and never throws.
+/// </summary>
+public static partial class JsonHighlighter
 {
-    private static readonly SolidColorBrush KeyBrush      = new(Color.Parse("#9CDCFE"));
-    private static readonly SolidColorBrush StringBrush   = new(Color.Parse("#CE9178"));
-    private static readonly SolidColorBrush NumberBrush   = new(Color.Parse("#B5CEA8"));
-    private static readonly SolidColorBrush BoolNullBrush = new(Color.Parse("#569CD6"));
-    private static readonly SolidColorBrush PunctBrush    = new(Color.Parse("#D4D4D4"));
-
     // Matches: strings, booleans, null, numbers, punctuation, whitespace
     [GeneratedRegex(@"""(?:\\.|[^""\\])*""|true|false|null|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}\[\]:,]|\s+")]
     private static partial Regex TokenRegex();
 
-    internal record struct Segment(string Text, SolidColorBrush? Brush);
-
-    internal static List<Segment> Colorize(string json)
+    public static List<HighlightSegment> Highlight(string json)
     {
-        var result = new List<Segment>();
+        var result = new List<HighlightSegment>();
         int pos = 0;
 
         var matches = TokenRegex().Matches(json);
@@ -36,9 +30,9 @@ internal static partial class JsonColorizer
 
             // Fill any unmatched gap
             if (index > pos)
-                result.Add(new Segment(json[pos..index], null));
+                result.Add(new HighlightSegment(json[pos..index], TokenKind.None));
 
-            SolidColorBrush? brush;
+            TokenKind kind;
 
             if (text.Length > 0 && text[0] == '"')
             {
@@ -50,24 +44,24 @@ internal static partial class JsonColorizer
                     isKey = tokens[j].text == ":";
                     break;
                 }
-                brush = isKey ? KeyBrush : StringBrush;
+                kind = isKey ? TokenKind.Key : TokenKind.StringValue;
             }
             else if (text is "true" or "false" or "null")
-                brush = BoolNullBrush;
+                kind = TokenKind.BooleanNull;
             else if (text.Length > 0 && (char.IsDigit(text[0]) || text[0] == '-'))
-                brush = NumberBrush;
+                kind = TokenKind.Number;
             else if (text.Length > 0 && !char.IsWhiteSpace(text[0]))
-                brush = PunctBrush;
+                kind = TokenKind.Punctuation;
             else
-                brush = null; // whitespace — inherits foreground
+                kind = TokenKind.None; // whitespace — inherits foreground
 
-            result.Add(new Segment(text, brush));
+            result.Add(new HighlightSegment(text, kind));
             pos = index + text.Length;
         }
 
         // Any trailing unmatched text
         if (pos < json.Length)
-            result.Add(new Segment(json[pos..], null));
+            result.Add(new HighlightSegment(json[pos..], TokenKind.None));
 
         return result;
     }

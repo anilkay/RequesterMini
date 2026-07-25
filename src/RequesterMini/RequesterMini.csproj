@@ -45,5 +45,6 @@
     <ProjectReference Include="..\CurlExporter\CurlExporter.csproj" />
     <ProjectReference Include="..\JsonFileStore\JsonFileStore.csproj" />
     <ProjectReference Include="..\BrunoImporter\BrunoImporter.csproj" />
+    <ProjectReference Include="..\SyntaxHighlighter\SyntaxHighlighter.csproj" />
   </ItemGroup>
 </Project>
