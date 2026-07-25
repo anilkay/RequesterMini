@@ -243,4 +243,54 @@ public class CurlCommandBuilderTests
         Assert.Contains($"-H 'Content-Type: {expectedContentType}'", result);
         Assert.Contains("-d 'test'", result);
     }
+
+    [Fact]
+    public void SetBasicAuth_AddsUserFlag()
+    {
+        var result = new CurlCommandBuilder()
+            .SetUrl("https://example.com")
+            .SetBasicAuth("user", "pass")
+            .Build();
+
+        Assert.Equal("curl 'https://example.com' -u 'user:pass'", result);
+    }
+
+    [Fact]
+    public void SetBasicAuth_NotCalled_OmitsUserFlag()
+    {
+        var result = new CurlCommandBuilder()
+            .SetUrl("https://example.com")
+            .Build();
+
+        Assert.DoesNotContain("-u", result);
+    }
+
+    [Fact]
+    public void SetBasicAuth_EmptyPassword_KeepsTrailingColon()
+    {
+        var result = new CurlCommandBuilder()
+            .SetUrl("https://example.com")
+            .SetBasicAuth("user", "")
+            .Build();
+
+        Assert.Contains("-u 'user:'", result);
+    }
+
+    [Fact]
+    public void SetBasicAuth_CredentialsWithQuote_AreEscaped()
+    {
+        var result = new CurlCommandBuilder()
+            .SetUrl("https://example.com")
+            .SetBasicAuth("us'er", "pa'ss")
+            .Build();
+
+        Assert.Contains(@"-u 'us'\''er:pa'\''ss'", result);
+    }
+
+    [Fact]
+    public void SetBasicAuth_Null_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => new CurlCommandBuilder().SetBasicAuth(null!, "pass"));
+        Assert.Throws<ArgumentNullException>(() => new CurlCommandBuilder().SetBasicAuth("user", null!));
+    }
 }

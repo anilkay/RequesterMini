@@ -21,6 +21,7 @@ public class CurlCommandBuilder
     private string _method = "GET";
     private string _url = "";
     private string? _body;
+    private string? _basicAuth;
     private readonly Dictionary<string, string> _headers = new(StringComparer.OrdinalIgnoreCase);
 
     public CurlCommandBuilder SetMethod(string method)
@@ -54,6 +55,18 @@ public class CurlCommandBuilder
         return SetBody(body, BodyTypeToContentType[bodyType]);
     }
 
+    /// <summary>
+    /// Emits HTTP Basic credentials as curl's own <c>-u user:password</c> flag, which reads better
+    /// than a pre-encoded Authorization header and lets curl do the Base64 encoding.
+    /// </summary>
+    public CurlCommandBuilder SetBasicAuth(string username, string password)
+    {
+        ArgumentNullException.ThrowIfNull(username);
+        ArgumentNullException.ThrowIfNull(password);
+        _basicAuth = $"{username}:{password}";
+        return this;
+    }
+
     public CurlCommandBuilder AddHeader(string key, string value)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
@@ -78,6 +91,12 @@ public class CurlCommandBuilder
         }
 
         parts.Add(Quote(_url));
+
+        if (_basicAuth is not null)
+        {
+            parts.Add("-u");
+            parts.Add(Quote(_basicAuth));
+        }
 
         foreach (var header in _headers)
         {

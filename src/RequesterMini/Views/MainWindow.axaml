@@ -119,6 +119,45 @@
                         </ScrollViewer>
                     </Grid>
                 </TabItem>
+                <TabItem Header="Auth">
+                    <Grid RowDefinitions="Auto, Auto, *">
+                        <ComboBox Grid.Row="0"
+                                  ItemsSource="{Binding AuthTypes}"
+                                  SelectedItem="{Binding SelectedAuthType, Mode=TwoWay}"
+                                  Width="150"
+                                  Margin="0,0,0,10"/>
+
+                        <Grid Grid.Row="1"
+                              IsVisible="{Binding IsBasicAuthSelected}"
+                              ColumnDefinitions="Auto, 260"
+                              RowDefinitions="Auto, Auto, Auto"
+                              HorizontalAlignment="Left">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Username" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding AuthUsername}" Watermark="Username" Margin="0,0,0,5"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Password" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                            <TextBox Grid.Row="1" Grid.Column="1"
+                                     Text="{Binding AuthPassword}"
+                                     Watermark="Password"
+                                     PasswordChar="•"
+                                     RevealPassword="{Binding IsPasswordRevealed}"
+                                     Margin="0,0,0,5"/>
+
+                            <CheckBox Grid.Row="2" Grid.Column="1"
+                                      IsChecked="{Binding IsPasswordRevealed}"
+                                      Content="Show password"/>
+                        </Grid>
+
+                        <TextBlock Grid.Row="2"
+                                   IsVisible="{Binding IsBasicAuthSelected}"
+                                   Text="Credentials are sent as an Authorization header and are not saved to request history."
+                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                   FontSize="12"
+                                   TextWrapping="Wrap"
+                                   VerticalAlignment="Bottom"
+                                   Margin="0,10,0,0"/>
+                    </Grid>
+                </TabItem>
                 <TabItem Header="Body">
                     <Grid RowDefinitions="Auto, *, Auto">
                         <Grid.Styles>

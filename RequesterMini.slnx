@@ -15,6 +15,7 @@
     <Project Path="src/BrunoImporter/BrunoImporter.csproj" />
     <Project Path="src/SyntaxHighlighter/SyntaxHighlighter.csproj" />
     <Project Path="src/UrlQuery/UrlQuery.csproj" />
+    <Project Path="src/HttpAuth/HttpAuth.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/AppLogger.Tests/AppLogger.Tests.csproj" />
@@ -22,5 +23,6 @@
     <Project Path="tests/JsonFileStore.Tests/JsonFileStore.Tests.csproj" />
     <Project Path="tests/BrunoImporter.Tests/BrunoImporter.Tests.csproj" />
     <Project Path="tests/UrlQuery.Tests/UrlQuery.Tests.csproj" />
+    <Project Path="tests/HttpAuth.Tests/HttpAuth.Tests.csproj" />
   </Folder>
 </Solution>
