@@ -13,6 +13,7 @@
     <Project Path="src/CurlExporter/CurlExporter.csproj" />
     <Project Path="src/JsonFileStore/JsonFileStore.csproj" />
     <Project Path="src/BrunoImporter/BrunoImporter.csproj" />
+    <Project Path="src/SyntaxHighlighter/SyntaxHighlighter.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/AppLogger.Tests/AppLogger.Tests.csproj" />

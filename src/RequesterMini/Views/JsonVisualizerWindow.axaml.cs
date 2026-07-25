@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Reactive.Linq;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using ReactiveUI;
 using RequesterMini.Utils;
 using RequesterMini.ViewModels;
+using SyntaxHighlighter;
 
 namespace RequesterMini.Views;
 
@@ -24,23 +26,30 @@ public partial class JsonVisualizerWindow : UserControl
         _subscription?.Dispose();
         if (DataContext is JsonVisualizerWindowViewModel vm)
         {
-            _subscription = vm.WhenAnyValue(x => x.PrettyJsonValue)
+            _subscription = vm.WhenAnyValue(x => x.PrettyContentValue, x => x.ContentKind)
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .Subscribe(UpdateInlines);
+                .Subscribe(t => UpdateInlines(t.Item1, t.Item2));
         }
     }
 
-    private void UpdateInlines(string json)
+    private void UpdateInlines(string content, PreviewContentKind kind)
     {
         JsonTextBlock.Inlines ??= new InlineCollection();
         JsonTextBlock.Inlines.Clear();
 
-        if (string.IsNullOrEmpty(json)) return;
+        if (string.IsNullOrEmpty(content)) return;
 
-        foreach (var (text, brush) in JsonColorizer.Colorize(json))
+        var segments = kind switch
+        {
+            PreviewContentKind.Json => JsonHighlighter.Highlight(content),
+            PreviewContentKind.Xml => XmlHighlighter.Highlight(content),
+            _ => new List<HighlightSegment> { new(content, TokenKind.None) },
+        };
+
+        foreach (var (text, tokenKind) in segments)
         {
             var run = new Run(text);
-            if (brush is not null) run.Foreground = brush;
+            if (HighlightBrushes.For(tokenKind) is { } brush) run.Foreground = brush;
             JsonTextBlock.Inlines.Add(run);
         }
     }
