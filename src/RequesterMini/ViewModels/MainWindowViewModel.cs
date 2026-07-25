@@ -15,6 +15,7 @@ using RequesterMini.Models;
 using AppLogger;
 using CurlExporter;
 using BrunoImporter;
+using HttpAuth;
 using OneOf;
 using System.Diagnostics.CodeAnalysis;
 using System.Reactive.Linq;
@@ -51,6 +52,8 @@ public class MainWindowViewModel : ViewModelBase
 
     internal ObservableCollection<string> BodyTypes { get; } = new(HttpConstants.BodyTypeValues);
 
+    internal ObservableCollection<string> AuthTypes { get; } = new(HttpConstants.AuthTypeValues);
+
     internal ObservableCollection<HeaderItem> Headers { get; } = [];
 
     internal ObservableCollection<QueryParamItem> QueryParams { get; } = [];
@@ -61,6 +64,38 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = HttpConstants.SelectedBodyType;
 
+
+    internal string SelectedAuthType
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = HttpConstants.SelectedAuthType;
+
+    // Drives visibility of the username/password fields; kept as a plain property (rather than an
+    // ObservableAsPropertyHelper) to stay consistent with the other properties and trimming-safe.
+    internal bool IsBasicAuthSelected
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    internal string AuthUsername
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "";
+
+    internal string AuthPassword
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "";
+
+    internal bool IsPasswordRevealed
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
 
     internal string Url
     {
@@ -173,6 +208,11 @@ public class MainWindowViewModel : ViewModelBase
                 .SetMethod(SelectedHttpMethod)
                 .SetUrl(Url);
 
+            if (HasBasicCredentials)
+            {
+                builder.SetBasicAuth(AuthUsername, AuthPassword);
+            }
+
             foreach (var header in Headers)
             {
                 if (header.IsEnabled && !string.IsNullOrWhiteSpace(header.Key))
@@ -268,7 +308,7 @@ public class MainWindowViewModel : ViewModelBase
             _cts = new CancellationTokenSource();
 
             Logger.Info($"Sending {SelectedHttpMethod} request to {Url}");
-            MakeRequest makeRequest = new MakeRequest(_httpClient, SelectedHttpMethod, Body, SelectedBodyType, Url, headers);
+            MakeRequest makeRequest = new MakeRequest(_httpClient, SelectedHttpMethod, Body, SelectedBodyType, Url, BuildRequestHeaders(headers));
             OneOf<RequestSuccess, RequestFailure> result = await makeRequest.Execute(_cts.Token);
 
             result.Switch(
@@ -306,11 +346,34 @@ public class MainWindowViewModel : ViewModelBase
 
         });
 
+        this.WhenAnyValue(x => x.SelectedAuthType)
+            .Subscribe(_ => IsBasicAuthSelected = CurrentAuthScheme == AuthScheme.Basic);
+
         // Validate the body as JSON while the user types (debounced so we don't parse on every keystroke).
         this.WhenAnyValue(x => x.Body, x => x.SelectedBodyType)
             .Throttle(TimeSpan.FromMilliseconds(400))
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(_ => ValidateBody());
+    }
+
+    private AuthScheme CurrentAuthScheme =>
+        Enum.TryParse<AuthScheme>(SelectedAuthType, ignoreCase: true, out var scheme) ? scheme : AuthScheme.None;
+
+    private bool HasBasicCredentials =>
+        CurrentAuthScheme == AuthScheme.Basic && !(AuthUsername.Length == 0 && AuthPassword.Length == 0);
+
+    // Returns the headers to send, which is the user's header list plus the generated Authorization
+    // header. The credentials are deliberately kept out of the dictionary that gets persisted to the
+    // request history, so passwords never reach the on-disk log. A Basic selection wins over an
+    // Authorization header typed by hand in the Headers tab.
+    private Dictionary<string, string> BuildRequestHeaders(Dictionary<string, string> headers)
+    {
+        if (!HasBasicCredentials) return headers;
+
+        return new Dictionary<string, string>(headers)
+        {
+            [BasicAuth.HeaderName] = BasicAuth.BuildHeaderValue(AuthUsername, AuthPassword),
+        };
     }
 
     private void RemoveHeader(HeaderItem header)
