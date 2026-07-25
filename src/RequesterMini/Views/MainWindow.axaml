@@ -74,7 +74,27 @@
             <!-- Request Details (Tabs) -->
             <TabControl Grid.Row="1" Margin="0,0,0,20" Height="250">
                 <TabItem Header="Params">
-                     <TextBlock Text="Query params editing coming soon..." VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="Gray"/>
+                    <Grid RowDefinitions="Auto, *">
+                        <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,10">
+                            <TextBlock Text="Query Params" Classes="h2" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Classes="secondary" Command="{Binding AddQueryParamCommand}" Content="+ Add Param"/>
+                        </Grid>
+
+                        <ScrollViewer Grid.Row="1">
+                            <ItemsControl ItemsSource="{Binding QueryParams}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid ColumnDefinitions="Auto, *, *, Auto" Margin="0,0,0,5">
+                                            <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                            <TextBox Grid.Column="1" Text="{Binding Key}" Watermark="Key" Margin="0,0,5,0"/>
+                                            <TextBox Grid.Column="2" Text="{Binding Value}" Watermark="Value" Margin="5,0,5,0"/>
+                                            <Button Grid.Column="3" Classes="danger" Content="✕" Command="{Binding RemoveCommand}" Padding="8,5"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
                 </TabItem>
                 <TabItem Header="Headers">
                     <Grid RowDefinitions="Auto, *">

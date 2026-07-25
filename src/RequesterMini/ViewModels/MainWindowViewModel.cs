@@ -4,6 +4,8 @@ using System.Reactive;
 using ReactiveUI;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Net.Http;
 using System.Threading;
 using RequesterMini.Constants;
@@ -16,6 +18,7 @@ using BrunoImporter;
 using OneOf;
 using System.Diagnostics.CodeAnalysis;
 using System.Reactive.Linq;
+using UrlQuery;
 
 namespace RequesterMini.ViewModels;
 
@@ -23,6 +26,10 @@ public class MainWindowViewModel : ViewModelBase
 {
     private readonly HttpClient? _httpClient;
     private CancellationTokenSource? _cts;
+
+    // Re-entrancy guard: Url and QueryParams mirror each other, so whichever side is being written
+    // suppresses the sync back in the other direction.
+    private bool _syncingQueryParams;
 
     [RequiresUnreferencedCode("This constructor uses reflection.")]
     public MainWindowViewModel(HttpClient httpClient) : this()
@@ -33,6 +40,7 @@ public class MainWindowViewModel : ViewModelBase
     internal ReactiveCommand<Unit, Unit> ClickCommand { get; }
     internal ReactiveCommand<Unit, Unit> CancelCommand { get; }
     internal ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
+    internal ReactiveCommand<Unit, Unit> AddQueryParamCommand { get; }
     internal ReactiveCommand<Unit, Unit> ExportCurlCommand { get; }
     internal ReactiveCommand<Unit, Unit> ImportBruCommand { get; }
 
@@ -44,6 +52,8 @@ public class MainWindowViewModel : ViewModelBase
     internal ObservableCollection<string> BodyTypes { get; } = new(HttpConstants.BodyTypeValues);
 
     internal ObservableCollection<HeaderItem> Headers { get; } = [];
+
+    internal ObservableCollection<QueryParamItem> QueryParams { get; } = [];
 
     internal string SelectedBodyType
     {
@@ -147,6 +157,15 @@ public class MainWindowViewModel : ViewModelBase
             headerItem.OnRemove = RemoveHeader;
             Headers.Add(headerItem);
         });
+
+        AddQueryParamCommand = ReactiveCommand.Create(() =>
+        {
+            QueryParams.Add(new QueryParamItem { OnRemove = RemoveQueryParam });
+        });
+
+        // Keep Url and QueryParams in step in both directions.
+        QueryParams.CollectionChanged += OnQueryParamsChanged;
+        this.WhenAnyValue(x => x.Url).Subscribe(_ => SyncParamsFromUrl());
 
         ExportCurlCommand = ReactiveCommand.Create(() =>
         {
@@ -297,6 +316,97 @@ public class MainWindowViewModel : ViewModelBase
     private void RemoveHeader(HeaderItem header)
     {
         Headers.Remove(header);
+    }
+
+    private void RemoveQueryParam(QueryParamItem param)
+    {
+        QueryParams.Remove(param);
+    }
+
+    private void OnQueryParamsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        // Editing a row (key/value/enabled) doesn't raise CollectionChanged, so each row is watched individually.
+        if (e.OldItems is not null)
+        {
+            foreach (QueryParamItem item in e.OldItems)
+            {
+                item.PropertyChanged -= OnQueryParamPropertyChanged;
+            }
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (QueryParamItem item in e.NewItems)
+            {
+                item.PropertyChanged += OnQueryParamPropertyChanged;
+            }
+        }
+
+        SyncUrlFromParams();
+    }
+
+    private void OnQueryParamPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        SyncUrlFromParams();
+    }
+
+    // Params -> Url. Only enabled rows with a key end up in the URL.
+    private void SyncUrlFromParams()
+    {
+        if (_syncingQueryParams) return;
+        _syncingQueryParams = true;
+        try
+        {
+            var enabled = new List<QueryParam>();
+            foreach (var param in QueryParams)
+            {
+                if (param.IsEnabled && !string.IsNullOrWhiteSpace(param.Key))
+                {
+                    enabled.Add(new QueryParam(param.Key, param.Value));
+                }
+            }
+
+            Url = UrlQueryCodec.Build(Url, enabled);
+        }
+        finally
+        {
+            _syncingQueryParams = false;
+        }
+    }
+
+    // Url -> Params. The URL is authoritative for enabled rows; disabled rows have no URL
+    // representation, so they are carried over rather than lost when the URL is edited.
+    private void SyncParamsFromUrl()
+    {
+        if (_syncingQueryParams) return;
+        _syncingQueryParams = true;
+        try
+        {
+            var disabled = new List<QueryParamItem>();
+            foreach (var param in QueryParams)
+            {
+                if (!param.IsEnabled) disabled.Add(param);
+
+                // Clear() raises a Reset with no OldItems, so detach here to avoid stale handlers.
+                param.PropertyChanged -= OnQueryParamPropertyChanged;
+            }
+
+            QueryParams.Clear();
+
+            foreach (var (key, value) in UrlQueryCodec.Parse(Url))
+            {
+                QueryParams.Add(new QueryParamItem { Key = key, Value = value, OnRemove = RemoveQueryParam });
+            }
+
+            foreach (var param in disabled)
+            {
+                QueryParams.Add(param);
+            }
+        }
+        finally
+        {
+            _syncingQueryParams = false;
+        }
     }
 
     private void ValidateBody()
