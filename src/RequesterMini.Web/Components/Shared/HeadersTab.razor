@@ -1,0 +1,32 @@
+@* Editable request headers. Unchecked rows stay in the list but are not sent. *@
+
+<MudStack Spacing="2">
+    @if (Workspace.Headers.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">No headers yet.</MudText>
+    }
+
+    @foreach (var header in Workspace.Headers)
+    {
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <MudCheckBox T="bool" @bind-Value="header.IsEnabled" Dense="true" Color="Color.Primary" />
+            <MudTextField T="string" @bind-Value="header.Key" Placeholder="Header name"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" Class="header-key" />
+            <MudTextField T="string" @bind-Value="header.Value" Placeholder="Value"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Error" Size="Size.Small"
+                           OnClick="@(() => Workspace.RemoveHeader(header))" aria-label="Remove header" />
+        </MudStack>
+    }
+
+    <div>
+        <MudButton StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Text" Color="Color.Primary"
+                   OnClick="Workspace.AddHeader">
+            Add Header
+        </MudButton>
+    </div>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public RequestWorkspace Workspace { get; set; } = null!;
+}

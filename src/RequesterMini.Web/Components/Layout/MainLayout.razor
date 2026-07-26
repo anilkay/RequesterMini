@@ -1,0 +1,67 @@
+@inherits LayoutComponentBase
+
+<MudThemeProvider @ref="_themeProvider" @bind-IsDarkMode="_isDarkMode" Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<CascadingValue Value="_isDarkMode" Name="IsDarkMode">
+    <MudLayout>
+        <MudAppBar Elevation="1">
+            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                           OnClick="@(() => _drawerOpen = !_drawerOpen)" aria-label="Toggle navigation" />
+            <MudIcon Icon="@Icons.Material.Filled.Http" Class="mr-2" />
+            <MudText Typo="Typo.h6">RequesterMini</MudText>
+            <MudSpacer />
+            <MudTooltip Text="@(_isDarkMode ? "Switch to light theme" : "Switch to dark theme")">
+                <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                               Color="Color.Inherit"
+                               OnClick="@(() => _isDarkMode = !_isDarkMode)"
+                               aria-label="Toggle theme" />
+            </MudTooltip>
+        </MudAppBar>
+
+        <MudDrawer @bind-Open="_drawerOpen" Elevation="1" ClipMode="DrawerClipMode.Always" Variant="DrawerVariant.Mini"
+                   OpenMiniOnHover="true">
+            <MudNavMenu>
+                <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Send">Request</MudNavLink>
+                <MudNavLink Href="/history" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.History">History</MudNavLink>
+            </MudNavMenu>
+        </MudDrawer>
+
+        <MudMainContent Class="pt-16">
+            <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="py-4">
+                @Body
+            </MudContainer>
+        </MudMainContent>
+    </MudLayout>
+</CascadingValue>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private MudThemeProvider _themeProvider = null!;
+    private bool _isDarkMode = true;
+    private bool _drawerOpen = true;
+
+    // A monospace stack for code so response bodies line up; everything else keeps the MudBlazor default.
+    private readonly MudTheme _theme = new()
+    {
+        Typography = new Typography
+        {
+            Default = new DefaultTypography { FontFamily = ["Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"] },
+        },
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        _isDarkMode = await _themeProvider.GetSystemDarkModeAsync();
+        StateHasChanged();
+    }
+}

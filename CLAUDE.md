@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-RequesterMini is a cross-platform desktop HTTP request client (a mini Postman/Insomnia) built with Avalonia + ReactiveUI on .NET 10.
+RequesterMini is a cross-platform HTTP request client (a mini Postman/Insomnia) on .NET 10, with two front ends over a shared set of libraries: an Avalonia + ReactiveUI desktop app and a Blazor Server + MudBlazor web app.
 
 ## Conventions
 
@@ -15,9 +15,10 @@ RequesterMini is a cross-platform desktop HTTP request client (a mini Postman/In
 Everything operates on the `RequesterMini.slnx` solution (an XML-based `.slnx`, not a `.sln`).
 
 ```bash
-dotnet build RequesterMini.slnx          # build all projects
-dotnet run --project src/RequesterMini    # run the desktop app
-dotnet test RequesterMini.slnx            # run all test projects
+dotnet build RequesterMini.slnx              # build all projects
+dotnet run --project src/RequesterMini       # run the desktop app
+dotnet run --project src/RequesterMini.Web   # run the web app (http://localhost:5168)
+dotnet test RequesterMini.slnx               # run all test projects
 
 # run one test project
 dotnet test tests/CurlExporter.Tests/CurlExporter.Tests.csproj
@@ -36,11 +37,26 @@ dotnet publish -r osx-arm64 --self-contained true -c Release
 
 The published exe requires these native files shipped alongside it: `av_libglesv2.dll`, `libHarfBuzzSharp.dll`, `libSkiaSharp.dll`.
 
+The web app ships as a container instead. The build context is the repository root, since the app references sibling libraries:
+
+```bash
+docker build -f src/RequesterMini.Web/Dockerfile -t requestermini-web .
+docker compose up --build
+```
+
+It serves plain HTTP on `8080` behind a TLS-terminating reverse proxy (`X-Forwarded-*` is honoured), writes history and logs to `/data` (override with the `DataDirectory` env var), and exposes `GET /healthz`.
+
 ## Architecture
 
 ### Solution layout
 - `src/RequesterMini/` — the Avalonia `WinExe`. Contains `Views/` (AXAML + code-behind), `ViewModels/`, `Models/`, `Utils/`, `Constants/`.
-- `src/AppLogger/`, `src/CurlExporter/`, `src/JsonFileStore/`, `src/BrunoImporter/` — standalone `net10.0` class libraries with zero UI dependencies, each with a paired `tests/*.Tests` project. **Reusable, UI-free logic belongs in a library so it can be unit-tested in isolation**; only UI/ViewModel glue stays in the main app.
+- `src/RequesterMini.Web/` — the Blazor Server app (MudBlazor UI). Contains `Components/` (`Pages/`, `Layout/`, `Shared/`), `Services/`, `Models/`, `Utils/`, `Constants/`. Ships with a `Dockerfile` (build context is the repo root) and a root `compose.yaml`.
+- `src/AppLogger/`, `src/CurlExporter/`, `src/JsonFileStore/`, `src/BrunoImporter/`, `src/HttpRequesting/`, `src/HttpAuth/`, `src/SyntaxHighlighter/`, `src/UrlQuery/` — standalone `net10.0` class libraries with zero UI dependencies, each with a paired `tests/*.Tests` project. **Reusable, UI-free logic belongs in a library so it can be unit-tested in isolation**; only UI/ViewModel glue stays in the front ends.
+
+### Two front ends, one set of libraries
+The desktop app predates the web app and is the reference implementation — leave it alone unless a change is asked for explicitly. The web app deliberately does **not** reference it; the request-sending logic it needs is `src/HttpRequesting` (`HttpRequestRunner`), a library port of the desktop app's `Utils/MakeRequest`. The two are duplicates today; if `MakeRequest` changes, `HttpRequestRunner` needs the same change (or the desktop app should be pointed at the library).
+
+Web-app state lives in two services: `RequestWorkspace` (scoped — the request being composed, one per Blazor circuit) and `RequestHistoryService` (singleton — one `JsonFileStore` over one file, capped at 50 entries). The web app has no `MessageBus`; pages talk through the scoped workspace instead.
 
 ### Trimming & reflection are hard constraints
 The app publishes trimmed + single-file, and reflection-based JSON is disabled (`JsonSerializerIsReflectionEnabledByDefault=false`). Consequences that shape the whole codebase:

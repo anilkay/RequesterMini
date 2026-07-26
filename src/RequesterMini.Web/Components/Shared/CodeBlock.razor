@@ -1,0 +1,18 @@
+@* Read-only, syntax-highlighted text. The palette lives in app.css and follows the active theme. *@
+
+<div class="code-block @(IsDarkMode ? "code-dark" : "code-light")" style="@HeightStyle">
+    <pre><code>@CodeRenderer.Render(Text, Kind)</code></pre>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Text { get; set; } = "";
+
+    [Parameter] public ContentKind Kind { get; set; } = ContentKind.Plain;
+
+    /// <summary>CSS max-height for the scroll area; null lets the block grow with its content.</summary>
+    [Parameter] public string? MaxHeight { get; set; } = "60vh";
+
+    [CascadingParameter(Name = "IsDarkMode")] private bool IsDarkMode { get; set; }
+
+    private string? HeightStyle => MaxHeight is null ? null : $"max-height:{MaxHeight};";
+}

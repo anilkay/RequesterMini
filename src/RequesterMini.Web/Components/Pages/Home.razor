@@ -1,0 +1,192 @@
+@page "/"
+@inject RequestWorkspace Workspace
+@inject IJSRuntime Js
+@inject ISnackbar Snackbar
+
+<PageTitle>RequesterMini — Request</PageTitle>
+
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="flex-wrap">
+        <MudSelect T="string" @bind-Value="Workspace.Method" @bind-Value:after="OnMethodChanged"
+                   Variant="Variant.Outlined" Margin="Margin.Dense" Class="method-select" Label="Method">
+            @foreach (var method in HttpConstants.Methods)
+            {
+                <MudSelectItem T="string" Value="@method">@method</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudTextField T="string" @bind-Value="Workspace.Url" Immediate="true" DebounceInterval="250"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Label="URL"
+                      Placeholder="https://example.com/api" Class="flex-grow-1"
+                      OnKeyUp="OnUrlKeyUp" Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Link" />
+
+        @if (Workspace.IsSending)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.Stop"
+                       OnClick="Workspace.Cancel">
+                Cancel
+            </MudButton>
+        }
+        else
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send"
+                       Disabled="@string.IsNullOrWhiteSpace(Workspace.Url)" OnClick="SendAsync">
+                Send
+            </MudButton>
+        }
+    </MudStack>
+
+    @if (Workspace.IsSending)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mt-2" />
+    }
+
+    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mt-3 flex-wrap">
+        <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Terminal"
+                   OnClick="ExportCurlAsync">
+            Export cURL
+        </MudButton>
+
+        <MudFileUpload T="IBrowserFile" FilesChanged="ImportBruAsync" Accept=".bru,.yml,.yaml"
+                       MaxFileSize="1048576" Context="upload">
+            <CustomContent>
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.FileOpen"
+                           OnClick="@(() => upload.OpenFilePickerAsync())">
+                    Import .bru
+                </MudButton>
+            </CustomContent>
+        </MudFileUpload>
+    </MudStack>
+</MudPaper>
+
+<MudGrid Spacing="4">
+    <MudItem xs="12" lg="6">
+        <MudPaper Elevation="1" Class="pa-4">
+            <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" Class="mt-2">
+                <MudTabPanel Text="Body" Disabled="@(!Workspace.IsBodyEnabled)"
+                             ToolTip="@(Workspace.IsBodyEnabled ? null : "GET requests are sent without a body")">
+                    <MudStack Spacing="3">
+                        <MudSelect T="string" @bind-Value="Workspace.BodyType" @bind-Value:after="StateHasChanged"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" Label="Body type"
+                                   Class="body-type-select">
+                            @foreach (var bodyType in HttpConstants.BodyTypes)
+                            {
+                                <MudSelectItem T="string" Value="@bodyType">@bodyType</MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        <MudTextField T="string" @bind-Value="Workspace.Body" Immediate="true" DebounceInterval="400"
+                                      @bind-Value:after="StateHasChanged"
+                                      Variant="Variant.Outlined" Lines="14" Class="body-editor"
+                                      Placeholder="Request body" Label="Body" />
+
+                        @if (Workspace.BodyJsonError is { } bodyError)
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Outlined">
+                                @bodyError
+                            </MudAlert>
+                        }
+                    </MudStack>
+                </MudTabPanel>
+
+                <MudTabPanel Text="@($"Headers ({Workspace.EnabledHeaderCount})")">
+                    <HeadersTab Workspace="Workspace" />
+                </MudTabPanel>
+
+                <MudTabPanel Text="@($"Query Params ({Workspace.EnabledQueryParamCount})")">
+                    <QueryParamsTab Workspace="Workspace" UrlChanged="StateHasChanged" />
+                </MudTabPanel>
+
+                <MudTabPanel Text="Auth">
+                    <MudStack Spacing="3">
+                        <MudSelect T="string" @bind-Value="Workspace.AuthType" @bind-Value:after="StateHasChanged"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" Label="Auth type"
+                                   Class="body-type-select">
+                            @foreach (var authType in HttpConstants.AuthTypes)
+                            {
+                                <MudSelectItem T="string" Value="@authType">@authType</MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        @if (Workspace.IsBasicAuth)
+                        {
+                            <MudTextField T="string" @bind-Value="Workspace.AuthUsername" Label="Username"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+
+                            <MudTextField T="string" @bind-Value="Workspace.AuthPassword" Label="Password"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                                          InputType="@(_revealPassword ? InputType.Text : InputType.Password)"
+                                          Adornment="Adornment.End"
+                                          AdornmentIcon="@(_revealPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                          OnAdornmentClick="@(() => _revealPassword = !_revealPassword)" />
+
+                            <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Outlined">
+                                Credentials are sent as an Authorization header and are not saved to request history.
+                            </MudAlert>
+                        }
+                    </MudStack>
+                </MudTabPanel>
+            </MudTabs>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" lg="6">
+        <ResponsePanel Response="Workspace.Response" />
+    </MudItem>
+</MudGrid>
+
+@code {
+    private bool _revealPassword;
+
+    private async Task SendAsync()
+    {
+        await Workspace.SendAsync();
+
+        if (Workspace.Response is { IsFailure: true } failure)
+        {
+            Snackbar.Add(failure.Body, Severity.Error);
+        }
+    }
+
+    private async Task OnUrlKeyUp(KeyboardEventArgs args)
+    {
+        if (args.Key is "Enter" && !Workspace.IsSending && !string.IsNullOrWhiteSpace(Workspace.Url))
+        {
+            await SendAsync();
+        }
+    }
+
+    // Switching to or from GET enables/disables the Body tab, so the tab strip has to re-render.
+    private void OnMethodChanged() => StateHasChanged();
+
+    private async Task ExportCurlAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Workspace.Url))
+        {
+            Snackbar.Add("Set a URL first.", Severity.Warning);
+            return;
+        }
+
+        await Js.InvokeVoidAsync("requesterMini.copyText", Workspace.BuildCurl());
+        Snackbar.Add("cURL command copied", Severity.Success);
+    }
+
+    private async Task ImportBruAsync(IBrowserFile? file)
+    {
+        if (file is null) return;
+
+        try
+        {
+            using var reader = new StreamReader(file.OpenReadStream(maxAllowedSize: 1024 * 1024));
+            var content = await reader.ReadToEndAsync();
+
+            Workspace.ApplyBruRequest(BrunoImporter.BrunoFileImporter.Parse(content));
+            Snackbar.Add($"Imported {file.Name}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not import {file.Name}: {ex.Message}", Severity.Error);
+        }
+    }
+}

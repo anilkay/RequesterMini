@@ -1,0 +1,107 @@
+/* Layout helpers ---------------------------------------------------------- */
+
+.method-select {
+    max-width: 140px;
+    min-width: 120px;
+}
+
+.body-type-select {
+    max-width: 220px;
+}
+
+.header-key {
+    max-width: 320px;
+}
+
+.history-search {
+    max-width: 320px;
+}
+
+.history-url {
+    max-width: 520px;
+    overflow-wrap: anywhere;
+}
+
+.body-editor textarea {
+    font-family: "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+    font-size: 0.85rem;
+}
+
+.response-header-name {
+    font-weight: 600;
+    white-space: nowrap;
+    vertical-align: top;
+}
+
+.response-header-value {
+    overflow-wrap: anywhere;
+}
+
+/* Code preview ------------------------------------------------------------ */
+
+.code-block {
+    overflow: auto;
+    border-radius: 6px;
+    border: 1px solid var(--mud-palette-lines-default);
+}
+
+.code-block pre {
+    margin: 0;
+    padding: 0.75rem 1rem;
+}
+
+.code-block code {
+    font-family: "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+/* Token palettes. Dark mirrors the desktop app (VS Code dark); light is its VS Code light counterpart. */
+
+.code-dark {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+}
+
+.code-dark .tok-key { color: #9cdcfe; }
+.code-dark .tok-string { color: #ce9178; }
+.code-dark .tok-number { color: #b5cea8; }
+.code-dark .tok-bool { color: #569cd6; }
+.code-dark .tok-punct { color: #d4d4d4; }
+.code-dark .tok-element { color: #569cd6; }
+.code-dark .tok-attr { color: #9cdcfe; }
+.code-dark .tok-attrvalue { color: #ce9178; }
+.code-dark .tok-comment { color: #6a9955; }
+.code-dark .tok-meta { color: #c586c0; }
+.code-dark .tok-tagpunct { color: #808080; }
+
+.code-light {
+    background-color: #fbfbfb;
+    color: #24292e;
+}
+
+.code-light .tok-key { color: #0451a5; }
+.code-light .tok-string { color: #a31515; }
+.code-light .tok-number { color: #098658; }
+.code-light .tok-bool { color: #0000ff; }
+.code-light .tok-punct { color: #24292e; }
+.code-light .tok-element { color: #800000; }
+.code-light .tok-attr { color: #e50000; }
+.code-light .tok-attrvalue { color: #0451a5; }
+.code-light .tok-comment { color: #008000; }
+.code-light .tok-meta { color: #7b3f9d; }
+.code-light .tok-tagpunct { color: #808080; }
+
+/* Framework error strip --------------------------------------------------- */
+
+.blazor-error-boundary {
+    background: #b32121;
+    padding: 1rem;
+    color: white;
+}
+
+.blazor-error-boundary::after {
+    content: "An error has occurred."
+}
