@@ -37,10 +37,10 @@ dotnet publish -r osx-arm64 --self-contained true -c Release
 
 The published exe requires these native files shipped alongside it: `av_libglesv2.dll`, `libHarfBuzzSharp.dll`, `libSkiaSharp.dll`.
 
-The web app ships as a container instead. The build context is the repository root, since the app references sibling libraries:
+The web app ships as a container instead. The `Dockerfile` lives at the repository root, not next to the app: the build context has to be the whole repo (the app references sibling libraries), and build platforms that derive the context from the Dockerfile's own directory — Dokploy does — would otherwise pick the wrong root. `COPY` cannot reach outside the context, so there is no Dockerfile-side workaround. Leave it at the root.
 
 ```bash
-docker build -f src/RequesterMini.Web/Dockerfile -t requestermini-web .
+docker build -t requestermini-web .
 docker compose up --build
 ```
 
@@ -50,7 +50,7 @@ It serves plain HTTP on `8080` behind a TLS-terminating reverse proxy (`X-Forwar
 
 ### Solution layout
 - `src/RequesterMini/` — the Avalonia `WinExe`. Contains `Views/` (AXAML + code-behind), `ViewModels/`, `Models/`, `Utils/`, `Constants/`.
-- `src/RequesterMini.Web/` — the Blazor Server app (MudBlazor UI). Contains `Components/` (`Pages/`, `Layout/`, `Shared/`), `Services/`, `Models/`, `Utils/`, `Constants/`. Ships with a `Dockerfile` (build context is the repo root) and a root `compose.yaml`.
+- `src/RequesterMini.Web/` — the Blazor Server app (MudBlazor UI). Contains `Components/` (`Pages/`, `Layout/`, `Shared/`), `Services/`, `Models/`, `Utils/`, `Constants/`. Containerized through the repo-root `Dockerfile` and `compose.yaml`.
 - `src/AppLogger/`, `src/CurlExporter/`, `src/JsonFileStore/`, `src/BrunoImporter/`, `src/HttpRequesting/`, `src/HttpAuth/`, `src/SyntaxHighlighter/`, `src/UrlQuery/` — standalone `net10.0` class libraries with zero UI dependencies, each with a paired `tests/*.Tests` project. **Reusable, UI-free logic belongs in a library so it can be unit-tested in isolation**; only UI/ViewModel glue stays in the front ends.
 
 ### Two front ends, one set of libraries
