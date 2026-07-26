@@ -41,25 +41,28 @@ public class MakeRequest {
 
             var request = new HttpRequestMessage(method, _url);
 
-            HttpContent content;
-            switch (_methodBodyType.ToLowerInvariant())
+            if (!string.Equals(_httpMethod, "GET", StringComparison.OrdinalIgnoreCase))
             {
-                case "json":
-                    content = new StringContent(_methodBody, Encoding.UTF8, "application/json");
-                    break;
-                case "xml":
-                    content = new StringContent(_methodBody, Encoding.UTF8, "application/xml");
-                    break;
-                case "form":
-                    var formData = new MultipartFormDataContent();
-                    formData.Add(new StringContent(_methodBody), "fieldName");
-                    content = formData;
-                    break;
-                default:
-                    content = new StringContent(_methodBody);
-                    break;
+                HttpContent content;
+                switch (_methodBodyType.ToLowerInvariant())
+                {
+                    case "json":
+                        content = new StringContent(_methodBody, Encoding.UTF8, "application/json");
+                        break;
+                    case "xml":
+                        content = new StringContent(_methodBody, Encoding.UTF8, "application/xml");
+                        break;
+                    case "form":
+                        var formData = new MultipartFormDataContent();
+                        formData.Add(new StringContent(_methodBody), "fieldName");
+                        content = formData;
+                        break;
+                    default:
+                        content = new StringContent(_methodBody);
+                        break;
+                }
+                request.Content = content;
             }
-            request.Content = content;
 
             // Add custom headers after content is set
             foreach (var header in _headers)
@@ -67,7 +70,7 @@ public class MakeRequest {
                 if (!string.IsNullOrWhiteSpace(header.Key))
                 {
                     // Content-related headers should be added to Content.Headers
-                    if (IsContentHeader(header.Key))
+                    if (IsContentHeader(header.Key) && request.Content is not null)
                     {
                         request.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
                     }

@@ -158,7 +158,7 @@
                                    Margin="0,10,0,0"/>
                     </Grid>
                 </TabItem>
-                <TabItem Header="Body">
+                <TabItem Header="Body" IsEnabled="{Binding IsBodyEnabled}">
                     <Grid RowDefinitions="Auto, *, Auto">
                         <Grid.Styles>
                             <Style Selector="TextBox.invalid /template/ Border#PART_BorderElement">
