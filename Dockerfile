@@ -1,6 +1,11 @@
-# Build context is the repository root, not this folder:
-#   docker build -f src/RequesterMini.Web/Dockerfile -t requestermini-web .
-# The web app references seven sibling libraries, so the whole src tree has to be reachable.
+# Builds src/RequesterMini.Web (the Blazor Server app):
+#   docker build -t requestermini-web .
+#
+# This sits at the repository root rather than next to the app on purpose. The app references seven
+# sibling libraries, so the build context has to be the whole repo — and build platforms that derive
+# the context from the Dockerfile's own directory (Dokploy does) would otherwise pick the wrong root
+# and every COPY below would fail. COPY can never reach outside the context, so there is no
+# Dockerfile-side workaround.
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src

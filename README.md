@@ -22,10 +22,11 @@ response view and a persisted request history at `/history`.
 
 ### Docker
 
-The build context is the repository root, because the web app references sibling libraries:
+The `Dockerfile` is at the repository root, because the build context has to be the whole repo — the
+web app references sibling libraries:
 
 ```bash
-docker build -f src/RequesterMini.Web/Dockerfile -t requestermini-web .
+docker build -t requestermini-web .
 ```
 
 ```bash
