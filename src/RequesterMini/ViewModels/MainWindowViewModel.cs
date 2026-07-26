@@ -178,6 +178,13 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = HttpConstants.SelectedMethod;
 
+    // GET requests don't send a body, so the Body tab is disabled while GET is selected.
+    internal bool IsBodyEnabled
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = !string.Equals(HttpConstants.SelectedMethod, "GET", StringComparison.OrdinalIgnoreCase);
+
     [RequiresUnreferencedCode("ReactiveCommand methods use reflection.")]
     public MainWindowViewModel()
     {
@@ -348,6 +355,9 @@ public class MainWindowViewModel : ViewModelBase
 
         this.WhenAnyValue(x => x.SelectedAuthType)
             .Subscribe(_ => IsBasicAuthSelected = CurrentAuthScheme == AuthScheme.Basic);
+
+        this.WhenAnyValue(x => x.SelectedHttpMethod)
+            .Subscribe(_ => IsBodyEnabled = !string.Equals(SelectedHttpMethod, "GET", StringComparison.OrdinalIgnoreCase));
 
         // Validate the body as JSON while the user types (debounced so we don't parse on every keystroke).
         this.WhenAnyValue(x => x.Body, x => x.SelectedBodyType)

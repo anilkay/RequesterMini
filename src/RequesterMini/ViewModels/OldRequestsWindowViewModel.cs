@@ -25,6 +25,7 @@ public record OldRequestDto(string Method, string Url, string Body, string Respo
                 "PUT" => "#FD7E14",      // Orange
                 "DELETE" => "#DC3545",   // Red
                 "PATCH" => "#17A2B8",    // Teal
+                "QUERY" => "#6F42C1",    // Purple
                 "HEAD" => "#6C757D",     // Gray
                 "OPTIONS" => "#6C757D",  // Gray
                 _ => "#6C757D"           // Default Gray
