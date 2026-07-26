@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Reactive;
 using ReactiveUI;
+using ReactiveUI.Reactive;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -238,13 +239,13 @@ public class MainWindowViewModel : ViewModelBase
             CopyToClipboard.Handle(curl).Subscribe();
             CopyFeedback = "✓ Copied!";
             Observable.Timer(TimeSpan.FromSeconds(2))
-                .ObserveOn(RxApp.MainThreadScheduler)
+                .ObserveOn(RxSchedulers.MainThreadScheduler)
                 .Subscribe(_ => CopyFeedback = "");
         });
 
         ImportBruCommand = ReactiveCommand.CreateFromObservable(() =>
             OpenBruFile.Handle(Unit.Default)
-                .ObserveOn(RxApp.MainThreadScheduler)
+                .ObserveOn(RxSchedulers.MainThreadScheduler)
                 .Do(filePath =>
                 {
                     if (string.IsNullOrEmpty(filePath)) return;
@@ -362,7 +363,7 @@ public class MainWindowViewModel : ViewModelBase
         // Validate the body as JSON while the user types (debounced so we don't parse on every keystroke).
         this.WhenAnyValue(x => x.Body, x => x.SelectedBodyType)
             .Throttle(TimeSpan.FromMilliseconds(400))
-            .ObserveOn(RxApp.MainThreadScheduler)
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
             .Subscribe(_ => ValidateBody());
     }
 

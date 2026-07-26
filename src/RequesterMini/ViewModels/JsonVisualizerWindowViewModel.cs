@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Xml;
 using System.Xml.Linq;
 using ReactiveUI;
+using ReactiveUI.Reactive;
 using RequesterMini.Constants;
 using RequesterMini.Utils;
 
