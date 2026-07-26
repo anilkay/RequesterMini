@@ -1,0 +1,50 @@
+@* Query params and the URL are two views of the same thing — every edit here rewrites the URL. *@
+
+<MudStack Spacing="2">
+    @if (Workspace.QueryParams.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            No query params. Adding one here appends it to the URL.
+        </MudText>
+    }
+
+    @foreach (var param in Workspace.QueryParams)
+    {
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <MudCheckBox T="bool" Value="param.IsEnabled" ValueChanged="@(v => Toggle(param, v))"
+                         Dense="true" Color="Color.Primary" />
+            <MudTextField T="string" @bind-Value="param.Key" @bind-Value:after="Sync" Placeholder="Key"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" Class="header-key" />
+            <MudTextField T="string" @bind-Value="param.Value" @bind-Value:after="Sync" Placeholder="Value"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Error" Size="Size.Small"
+                           OnClick="@(() => Workspace.RemoveQueryParam(param))" aria-label="Remove param" />
+        </MudStack>
+    }
+
+    <div>
+        <MudButton StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Text" Color="Color.Primary"
+                   OnClick="Workspace.AddQueryParam">
+            Add Param
+        </MudButton>
+    </div>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired] public RequestWorkspace Workspace { get; set; } = null!;
+
+    /// <summary>Lets the page refresh the URL field, which this tab rewrites as a side effect.</summary>
+    [Parameter] public EventCallback UrlChanged { get; set; }
+
+    private async Task Toggle(QueryParamRow param, bool isEnabled)
+    {
+        param.IsEnabled = isEnabled;
+        await Sync();
+    }
+
+    private async Task Sync()
+    {
+        Workspace.SyncUrlFromParams();
+        await UrlChanged.InvokeAsync();
+    }
+}

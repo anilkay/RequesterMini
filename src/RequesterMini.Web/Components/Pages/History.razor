@@ -1,0 +1,166 @@
+@page "/history"
+@implements IDisposable
+@inject RequestHistoryService HistoryService
+@inject RequestWorkspace Workspace
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>RequesterMini — History</PageTitle>
+
+@if (!HistoryService.IsPersistenceAvailable)
+{
+    <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-4">
+        History could not be written to disk — entries are kept in memory only until the app restarts.
+    </MudAlert>
+}
+
+<MudTable T="StoredRequest" Items="@Filtered" Hover="true" Dense="true" Elevation="1"
+          Breakpoint="Breakpoint.Sm" AllowUnsorted="false">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Request History</MudText>
+        <MudSpacer />
+        <MudTextField T="string" @bind-Value="_search" Immediate="true" Placeholder="Search URL or method"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      Margin="Margin.Dense" Class="mt-0 mr-4 history-search" />
+        <MudButton StartIcon="@Icons.Material.Filled.DeleteSweep" Color="Color.Error" Variant="Variant.Text"
+                   Disabled="@(_entries.Count == 0)" OnClick="ClearAllAsync">
+            Clear all
+        </MudButton>
+    </ToolBarContent>
+
+    <HeaderContent>
+        <MudTh>Method</MudTh>
+        <MudTh>URL</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>When (UTC)</MudTh>
+        <MudTh Style="width:160px" />
+    </HeaderContent>
+
+    <RowTemplate>
+        <MudTd DataLabel="Method">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@MethodPalette.For(context.Method)">
+                @context.Method
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="URL" Class="history-url">@context.Url</MudTd>
+        <MudTd DataLabel="Status">
+            <MudText Typo="Typo.body2">@context.ResponseStatusCode</MudText>
+        </MudTd>
+        <MudTd DataLabel="When">
+            <MudText Typo="Typo.body2">@context.SavedAtUtc.ToString("yyyy-MM-dd HH:mm:ss")</MudText>
+        </MudTd>
+        <MudTd>
+            <MudStack Row="true" Spacing="0" Justify="Justify.FlexEnd">
+                <MudTooltip Text="@(ReferenceEquals(_expanded, context) ? "Hide details" : "Show details")">
+                    <MudIconButton Size="Size.Small"
+                                   Icon="@(ReferenceEquals(_expanded, context) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                   OnClick="@(() => Toggle(context))" aria-label="Toggle details" />
+                </MudTooltip>
+                <MudTooltip Text="Load into editor">
+                    <MudIconButton Size="Size.Small" Color="Color.Primary" Icon="@Icons.Material.Filled.OpenInNew"
+                                   OnClick="@(() => Load(context))" aria-label="Load request" />
+                </MudTooltip>
+                <MudTooltip Text="Delete">
+                    <MudIconButton Size="Size.Small" Color="Color.Error" Icon="@Icons.Material.Filled.Delete"
+                                   OnClick="@(() => HistoryService.Remove(context))" aria-label="Delete entry" />
+                </MudTooltip>
+            </MudStack>
+        </MudTd>
+    </RowTemplate>
+
+    <ChildRowContent>
+        @if (ReferenceEquals(_expanded, context))
+        {
+            <MudTr>
+                <td colspan="5" class="pa-4">
+                    <MudGrid Spacing="3">
+                        @if (!string.IsNullOrWhiteSpace(context.Body))
+                        {
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.subtitle2" Class="mb-1">Request body</MudText>
+                                <CodeBlock Text="@context.Body" Kind="@BodyKind(context)" MaxHeight="240px" />
+                            </MudItem>
+                        }
+                        <MudItem xs="12" md="@(string.IsNullOrWhiteSpace(context.Body) ? 12 : 6)">
+                            <MudText Typo="Typo.subtitle2" Class="mb-1">Response</MudText>
+                            <CodeBlock Text="@Preview(context.ResponseBody)"
+                                       Kind="@ContentFormatter.Detect(null, context.ResponseBody)"
+                                       MaxHeight="240px" />
+                        </MudItem>
+                    </MudGrid>
+                </td>
+            </MudTr>
+        }
+    </ChildRowContent>
+
+    <NoRecordsContent>
+        <MudStack AlignItems="AlignItems.Center" Class="py-8">
+            <MudIcon Icon="@Icons.Material.Outlined.History" Size="Size.Large" Class="mud-text-secondary" />
+            <MudText Class="mud-text-secondary">No saved requests yet.</MudText>
+        </MudStack>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    private const int PreviewLimit = 20_000;
+
+    private IReadOnlyList<StoredRequest> _entries = [];
+    private StoredRequest? _expanded;
+    private string _search = "";
+
+    private IEnumerable<StoredRequest> Filtered =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _entries
+            : _entries.Where(entry =>
+                entry.Url.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                || entry.Method.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    protected override void OnInitialized()
+    {
+        _entries = HistoryService.Snapshot();
+        HistoryService.Changed += OnHistoryChanged;
+    }
+
+    public void Dispose() => HistoryService.Changed -= OnHistoryChanged;
+
+    private void OnHistoryChanged()
+    {
+        _entries = HistoryService.Snapshot();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void Toggle(StoredRequest entry) =>
+        _expanded = ReferenceEquals(_expanded, entry) ? null : entry;
+
+    private void Load(StoredRequest entry)
+    {
+        Workspace.LoadFrom(entry);
+        Snackbar.Add("Request loaded into the editor", Severity.Success);
+        Navigation.NavigateTo("/");
+    }
+
+    private async Task ClearAllAsync()
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Clear history",
+            "Delete every saved request? This cannot be undone.",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            HistoryService.Clear();
+        }
+    }
+
+    private static ContentKind BodyKind(StoredRequest entry) => entry.BodyType.ToLowerInvariant() switch
+    {
+        "json" => ContentKind.Json,
+        "xml" => ContentKind.Xml,
+        _ => ContentKind.Plain,
+    };
+
+    // Details rows are a preview, not the full payload — a multi-megabyte body would bloat the render.
+    private static string Preview(string text) =>
+        text.Length <= PreviewLimit ? text : text[..PreviewLimit] + "\n… (truncated)";
+}

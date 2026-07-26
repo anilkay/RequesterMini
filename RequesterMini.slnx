@@ -9,6 +9,7 @@
   </Configurations>
   <Folder Name="/src/">
     <Project Path="src/RequesterMini/RequesterMini.csproj" />
+    <Project Path="src/RequesterMini.Web/RequesterMini.Web.csproj" />
     <Project Path="src/AppLogger/AppLogger.csproj" />
     <Project Path="src/CurlExporter/CurlExporter.csproj" />
     <Project Path="src/JsonFileStore/JsonFileStore.csproj" />
@@ -16,6 +17,7 @@
     <Project Path="src/SyntaxHighlighter/SyntaxHighlighter.csproj" />
     <Project Path="src/UrlQuery/UrlQuery.csproj" />
     <Project Path="src/HttpAuth/HttpAuth.csproj" />
+    <Project Path="src/HttpRequesting/HttpRequesting.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/AppLogger.Tests/AppLogger.Tests.csproj" />
@@ -24,5 +26,7 @@
     <Project Path="tests/BrunoImporter.Tests/BrunoImporter.Tests.csproj" />
     <Project Path="tests/UrlQuery.Tests/UrlQuery.Tests.csproj" />
     <Project Path="tests/HttpAuth.Tests/HttpAuth.Tests.csproj" />
+    <Project Path="tests/HttpRequesting.Tests/HttpRequesting.Tests.csproj" />
+    <Project Path="tests/RequesterMini.Web.Tests/RequesterMini.Web.Tests.csproj" />
   </Folder>
 </Solution>

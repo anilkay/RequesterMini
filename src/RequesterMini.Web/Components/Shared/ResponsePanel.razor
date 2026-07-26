@@ -1,0 +1,124 @@
+@inject IJSRuntime Js
+@inject ISnackbar Snackbar
+
+<MudPaper Elevation="1" Class="pa-4">
+    @if (Response is null)
+    {
+        <MudStack AlignItems="AlignItems.Center" Class="py-8">
+            <MudIcon Icon="@Icons.Material.Outlined.Inbox" Size="Size.Large" Class="mud-text-secondary" />
+            <MudText Typo="Typo.body1" Class="mud-text-secondary">No response yet — send a request.</MudText>
+        </MudStack>
+    }
+    else
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-3 flex-wrap">
+            <MudChip T="string" Color="StatusColor" Variant="Variant.Filled" Size="Size.Small">
+                @Response.StatusText
+            </MudChip>
+
+            @if (!Response.IsFailure)
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Small" /> @Response.DurationText
+                </MudText>
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    <MudIcon Icon="@Icons.Material.Filled.DataUsage" Size="Size.Small" /> @Response.SizeText
+                </MudText>
+            }
+
+            @if (!string.IsNullOrEmpty(Response.FinishedText))
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">@Response.FinishedText</MudText>
+            }
+
+            <MudSpacer />
+
+            @if (Kind is not ContentKind.Plain)
+            {
+                <MudTooltip Text="Pretty print">
+                    <MudSwitch T="bool" @bind-Value="_pretty" Color="Color.Primary" Label="Pretty" Size="Size.Small" />
+                </MudTooltip>
+            }
+
+            <MudTooltip Text="Copy response">
+                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" OnClick="CopyAsync"
+                               aria-label="Copy response" />
+            </MudTooltip>
+            <MudTooltip Text="Download response">
+                <MudIconButton Icon="@Icons.Material.Filled.Download" Size="Size.Small" OnClick="DownloadAsync"
+                               aria-label="Download response" />
+            </MudTooltip>
+        </MudStack>
+
+        <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" Class="mt-2">
+            <MudTabPanel Text="Body">
+                @if (string.IsNullOrEmpty(Response.Body))
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">Empty response body.</MudText>
+                }
+                else
+                {
+                    <CodeBlock Text="@DisplayBody" Kind="@(_pretty ? Kind : ContentKind.Plain)" />
+                }
+            </MudTabPanel>
+
+            <MudTabPanel Text="@($"Headers ({Response.Headers.Count})")" Disabled="@(Response.Headers.Count == 0)">
+                <MudSimpleTable Dense="true" Hover="true" Striped="true">
+                    <tbody>
+                        @foreach (var (name, value) in Response.Headers)
+                        {
+                            <tr>
+                                <td class="response-header-name">@name</td>
+                                <td class="response-header-value">@value</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudPaper>
+
+@code {
+    [Parameter] public ResponseView? Response { get; set; }
+
+    private bool _pretty = true;
+
+    private ContentKind Kind => Response is null
+        ? ContentKind.Plain
+        : ContentFormatter.Detect(Response.ContentType, Response.Body);
+
+    private Color StatusColor => Response switch
+    {
+        null => Color.Default,
+        { IsFailure: true } => Color.Error,
+        { StatusNumber: 0 } => Color.Default,
+        var response => MethodPalette.ForStatus(response.StatusNumber),
+    };
+
+    private string DisplayBody => Response is null
+        ? ""
+        : _pretty ? ContentFormatter.Pretty(Response.Body, Kind) : Response.Body;
+
+    private async Task CopyAsync()
+    {
+        if (Response is null) return;
+
+        await Js.InvokeVoidAsync("requesterMini.copyText", DisplayBody);
+        Snackbar.Add("Response copied", Severity.Success);
+    }
+
+    private async Task DownloadAsync()
+    {
+        if (Response is null) return;
+
+        var extension = Kind switch
+        {
+            ContentKind.Json => "json",
+            ContentKind.Xml => "xml",
+            _ => "txt",
+        };
+
+        await Js.InvokeVoidAsync("requesterMini.download", $"response.{extension}", DisplayBody);
+    }
+}
