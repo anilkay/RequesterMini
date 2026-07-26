@@ -4,6 +4,7 @@ using System.Reactive.Linq;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using ReactiveUI;
+using ReactiveUI.Reactive;
 using RequesterMini.Utils;
 using RequesterMini.ViewModels;
 using SyntaxHighlighter;
@@ -27,7 +28,7 @@ public partial class JsonVisualizerWindow : UserControl
         if (DataContext is JsonVisualizerWindowViewModel vm)
         {
             _subscription = vm.WhenAnyValue(x => x.PrettyContentValue, x => x.ContentKind)
-                .ObserveOn(RxApp.MainThreadScheduler)
+                .ObserveOn(RxSchedulers.MainThreadScheduler)
                 .Subscribe(t => UpdateInlines(t.Item1, t.Item2));
         }
     }

@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Reactive;
 using ReactiveUI;
+using ReactiveUI.Reactive;
 
 namespace RequesterMini.ViewModels;
 

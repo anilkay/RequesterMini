@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Reactive;
 using ReactiveUI;
+using ReactiveUI.Reactive;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;

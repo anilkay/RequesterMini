@@ -1,6 +1,7 @@
 ﻿using AppLogger;
 using Avalonia;
 using ReactiveUI.Avalonia;
+using ReactiveUI.Avalonia.Reactive;
 using System;
 
 namespace RequesterMini;
@@ -42,5 +43,5 @@ sealed class Program
             .UsePlatformDetect()
             .WithInterFont()
             .LogToTrace()
-            .UseReactiveUI();
+            .UseReactiveUI(_ => { });
 }
