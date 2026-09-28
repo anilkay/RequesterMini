@@ -12,7 +12,7 @@ using RequesterMini.Utils;
 
 namespace RequesterMini.ViewModels;
 
-public record OldRequestDto(string Method, string Url, string Body, string ResponseStatusCode, string ResponseBody, Dictionary<string, string> Headers)
+public record OldRequestDto(string Method, string Url, string Body, string ResponseStatusCode, string ResponseBody, Dictionary<string, string> Headers, string ProxyUrl = "")
 {
     [System.Text.Json.Serialization.JsonIgnore]
     public string MethodColor

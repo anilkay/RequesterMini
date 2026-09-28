@@ -158,6 +158,16 @@
                                    Margin="0,10,0,0"/>
                     </Grid>
                 </TabItem>
+                <TabItem Header="Proxy">
+                    <StackPanel Spacing="5" HorizontalAlignment="Left" Width="400">
+                        <TextBox Text="{Binding ProxyUrl}" Watermark="http://proxy-host:8080 (leave empty for no proxy)"/>
+                        <TextBox Text="{Binding ProxyUsername}" Watermark="Proxy username (optional)"/>
+                        <TextBox Text="{Binding ProxyPassword}" Watermark="Proxy password (optional)" PasswordChar="•"/>
+                        <TextBlock Text="Applied to requests only when a proxy URL is set. Proxy credentials are not saved."
+                                   FontSize="12"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </TabItem>
                 <TabItem Header="Body" IsEnabled="{Binding IsBodyEnabled}">
                     <Grid RowDefinitions="Auto, *, Auto">
                         <Grid.Styles>

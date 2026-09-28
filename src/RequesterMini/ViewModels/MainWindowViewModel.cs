@@ -98,6 +98,24 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    internal string ProxyUrl
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "";
+
+    internal string ProxyUsername
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "";
+
+    internal string ProxyPassword
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "";
+
     internal string Url
     {
         get;
@@ -281,6 +299,7 @@ public class MainWindowViewModel : ViewModelBase
             Url = dto.Url;
             SelectedHttpMethod = dto.Method;
             Body = dto.Body;
+            ProxyUrl = dto.ProxyUrl ?? "";
             ResponseStatusCode = dto.ResponseStatusCode;
             ResponseBody = dto.ResponseBody;
 
@@ -316,8 +335,32 @@ public class MainWindowViewModel : ViewModelBase
             _cts = new CancellationTokenSource();
 
             Logger.Info($"Sending {SelectedHttpMethod} request to {Url}");
-            MakeRequest makeRequest = new MakeRequest(_httpClient, SelectedHttpMethod, Body, SelectedBodyType, Url, BuildRequestHeaders(headers));
+            HttpClient client = _httpClient;
+            HttpClient? proxyClient = null;
+            if (!string.IsNullOrWhiteSpace(ProxyUrl))
+            {
+                if (!Uri.TryCreate(ProxyUrl.Trim(), UriKind.Absolute, out var proxyUri))
+                {
+                    ResponseBody = $"Invalid proxy URL: {ProxyUrl}";
+                    ResponseStatusCode = "Error";
+                    FinishedTimeUtc = "";
+                    RequestTime = "";
+                    return;
+                }
+                proxyClient = new HttpClient(new HttpClientHandler
+                {
+                    Proxy = new System.Net.WebProxy(proxyUri)
+                    {
+                        Credentials = string.IsNullOrEmpty(ProxyUsername) ? null : new System.Net.NetworkCredential(ProxyUsername, ProxyPassword)
+                    },
+                    UseProxy = true
+                });
+                client = proxyClient;
+            }
+
+            MakeRequest makeRequest = new MakeRequest(client, SelectedHttpMethod, Body, SelectedBodyType, Url, BuildRequestHeaders(headers));
             OneOf<RequestSuccess, RequestFailure> result = await makeRequest.Execute(_cts.Token);
+            proxyClient?.Dispose();
 
             result.Switch(
                  success =>
@@ -348,7 +391,7 @@ public class MainWindowViewModel : ViewModelBase
 
             MessageBus.Current.SendMessage(ResponseBody, MessageBusConstants.NewJsonGenerated);
 
-            var oldRequestDto = new OldRequestDto(SelectedHttpMethod, Url, Body, ResponseStatusCode, ResponseBody, headers);
+            var oldRequestDto = new OldRequestDto(SelectedHttpMethod, Url, Body, ResponseStatusCode, ResponseBody, headers, ProxyUrl);
 
             MessageBus.Current.SendMessage(JsonSerializer.Serialize(oldRequestDto, SourceGenerationContext.Default.OldRequestDto), MessageBusConstants.NewRequest);
 
