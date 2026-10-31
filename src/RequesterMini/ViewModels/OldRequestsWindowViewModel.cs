@@ -51,6 +51,52 @@ public class OldRequestsWindowViewModel : ViewModelBase
 
     internal ReactiveCommand<OldRequestDto, Unit> LoadCommand { get; }
 
+    private static readonly string CollectionsPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "RequesterMini",
+        "collections.json");
+
+    private readonly JsonFileStore.JsonFileStore<List<RequestCollectionDto>> _collectionStore = new(
+        CollectionsPath, SourceGenerationContext.Default.ListRequestCollectionDto);
+
+    public ObservableCollection<CollectionItem> Collections { get; } = [];
+
+    internal string NewCollectionName
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "";
+
+    internal CollectionItem? SelectedCollection
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    internal ReactiveCommand<Unit, Unit> AddCollectionCommand { get; }
+
+    internal ReactiveCommand<CollectionItem, Unit> RemoveCollectionCommand { get; }
+
+    internal ReactiveCommand<OldRequestDto, Unit> RemoveCollectionRequestCommand { get; }
+
+    internal ReactiveCommand<OldRequestDto, Unit> SaveHistoryToCollectionCommand { get; }
+
+    private void SaveCollections() => _collectionStore.Save(Collections.Select(c => c.ToDto()).ToList());
+
+    private void AddToCollection(OldRequestDto dto)
+    {
+        var target = SelectedCollection ?? Collections.FirstOrDefault();
+        if (target is null)
+        {
+            target = new CollectionItem("Default");
+            Collections.Add(target);
+            SelectedCollection = target;
+        }
+
+        target.Requests.Add(dto);
+        SaveCollections();
+    }
+
     [RequiresUnreferencedCode("Uses ReactiveCommand")]
     public OldRequestsWindowViewModel()
     {
@@ -74,6 +120,69 @@ public class OldRequestsWindowViewModel : ViewModelBase
                 OldRequests.Add(item);
             }
         }
+
+        var savedCollections = _collectionStore.Load();
+        if (savedCollections is not null)
+        {
+            foreach (var c in savedCollections)
+            {
+                Collections.Add(new CollectionItem(c.Name, c.Requests));
+            }
+        }
+
+        AddCollectionCommand = ReactiveCommand.Create(() =>
+        {
+            var name = NewCollectionName.Trim();
+            if (name.Length == 0 || Collections.Any(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase)))
+            {
+                return;
+            }
+
+            var collection = new CollectionItem(name);
+            Collections.Add(collection);
+            SelectedCollection = collection;
+            NewCollectionName = "";
+            SaveCollections();
+        });
+
+        RemoveCollectionCommand = ReactiveCommand.Create<CollectionItem>(collection =>
+        {
+            Collections.Remove(collection);
+            if (SelectedCollection == collection)
+            {
+                SelectedCollection = null;
+            }
+            SaveCollections();
+        });
+
+        RemoveCollectionRequestCommand = ReactiveCommand.Create<OldRequestDto>(item =>
+        {
+            var owner = Collections.FirstOrDefault(c => c.Requests.Contains(item));
+            if (owner is null)
+            {
+                return;
+            }
+
+            owner.Requests.Remove(item);
+            SaveCollections();
+        });
+
+        SaveHistoryToCollectionCommand = ReactiveCommand.Create<OldRequestDto>(item =>
+            AddToCollection(item with { ResponseStatusCode = "", ResponseBody = "" }));
+
+        MessageBus.Current.Listen<string>(Constants.MessageBusConstants.SaveToCollection).Subscribe(value =>
+        {
+            if (value == null)
+            {
+                return;
+            }
+
+            var dto = JsonSerializer.Deserialize<OldRequestDto>(value, SourceGenerationContext.Default.OldRequestDto);
+            if (dto is not null)
+            {
+                AddToCollection(dto);
+            }
+        });
 
         MessageBus.Current.Listen<string>(Constants.MessageBusConstants.NewRequest).Subscribe(value =>
         {

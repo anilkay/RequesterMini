@@ -5,5 +5,6 @@
         internal static readonly string NewJsonGenerated = "newjson";
         internal static readonly string NewRequest = "newrequest";
         internal static readonly string LoadRequest = "loadrequest";
+        internal static readonly string SaveToCollection = "savetocollection";
     }
 }

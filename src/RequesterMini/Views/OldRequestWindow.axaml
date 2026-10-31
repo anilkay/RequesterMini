@@ -11,6 +11,8 @@
         <vm:OldRequestsWindowViewModel/>
     </Design.DataContext>
     
+    <TabControl>
+    <TabItem Header="History">
     <Grid RowDefinitions="Auto, *">
         <TextBlock Text="History" FontWeight="Bold" FontSize="18" Margin="10"/>
 
@@ -18,7 +20,7 @@
             <ItemsControl ItemsSource="{Binding OldRequests}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:OldRequestDto">
-                        <Grid ColumnDefinitions="Auto, *, Auto" Margin="4,2">
+                        <Grid ColumnDefinitions="Auto, *, Auto, Auto" Margin="4,2">
                             <Border Grid.Column="0" 
                                     CornerRadius="3" 
                                     Background="{Binding MethodColor}"
@@ -46,6 +48,15 @@
                                            ToolTip.Tip="{Binding Url}"/>
                             </Button>
                             <Button Grid.Column="2"
+                                    Command="{Binding $parent[UserControl].((vm:OldRequestsWindowViewModel)DataContext).SaveHistoryToCollectionCommand}"
+                                    CommandParameter="{Binding}"
+                                    Content="★"
+                                    ToolTip.Tip="Save to selected collection"
+                                    Background="Transparent"
+                                    Padding="6,3"
+                                    Margin="6,0,0,0"
+                                    VerticalAlignment="Center"/>
+                            <Button Grid.Column="3"
                                     Command="{Binding $parent[UserControl].((vm:OldRequestsWindowViewModel)DataContext).RemoveCommand}"
                                     CommandParameter="{Binding}"
                                     Content="🗑"
@@ -59,4 +70,75 @@
             </ItemsControl>
         </ScrollViewer>
     </Grid>
+    </TabItem>
+    <TabItem Header="Collections">
+        <Grid RowDefinitions="Auto, Auto, *">
+            <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,10,0,5">
+                <TextBox Text="{Binding NewCollectionName}" Watermark="New collection name"/>
+                <Button Grid.Column="1" Command="{Binding AddCollectionCommand}" Content="+" Margin="5,0,0,0"/>
+            </Grid>
+            <ComboBox Grid.Row="1"
+                      ItemsSource="{Binding Collections}"
+                      SelectedItem="{Binding SelectedCollection, Mode=TwoWay}"
+                      PlaceholderText="Target collection"
+                      HorizontalAlignment="Stretch"
+                      Margin="0,0,0,5">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CollectionItem">
+                        <TextBlock Text="{Binding Name}"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <ScrollViewer Grid.Row="2">
+                <ItemsControl ItemsSource="{Binding Collections}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CollectionItem">
+                            <Expander HorizontalAlignment="Stretch" Margin="0,2">
+                                <Expander.Header>
+                                    <Grid ColumnDefinitions="*, Auto">
+                                        <TextBlock Text="{Binding Name}" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        <Button Grid.Column="1"
+                                                Command="{Binding $parent[UserControl].((vm:OldRequestsWindowViewModel)DataContext).RemoveCollectionCommand}"
+                                                CommandParameter="{Binding}"
+                                                Content="🗑"
+                                                Background="Transparent"
+                                                Padding="6,3"/>
+                                    </Grid>
+                                </Expander.Header>
+                                <ItemsControl ItemsSource="{Binding Requests}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:OldRequestDto">
+                                            <Grid ColumnDefinitions="Auto, *, Auto" Margin="0,2">
+                                                <Border CornerRadius="3" Background="{Binding MethodColor}" Padding="4,2" Margin="0,0,6,0" VerticalAlignment="Center" MinWidth="40">
+                                                    <TextBlock Text="{Binding Method}" FontWeight="Bold" FontSize="10" Foreground="White" HorizontalAlignment="Center"/>
+                                                </Border>
+                                                <Button Grid.Column="1"
+                                                        Command="{Binding $parent[UserControl].((vm:OldRequestsWindowViewModel)DataContext).LoadCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Background="Transparent"
+                                                        Padding="0"
+                                                        HorizontalAlignment="Stretch"
+                                                        HorizontalContentAlignment="Left"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Url}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Url}"/>
+                                                </Button>
+                                                <Button Grid.Column="2"
+                                                        Command="{Binding $parent[UserControl].((vm:OldRequestsWindowViewModel)DataContext).RemoveCollectionRequestCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Content="✕"
+                                                        Background="Transparent"
+                                                        Padding="6,3"
+                                                        Margin="4,0,0,0"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Expander>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </TabItem>
+    </TabControl>
 </UserControl>

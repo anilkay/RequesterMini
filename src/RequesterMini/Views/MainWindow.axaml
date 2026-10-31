@@ -54,6 +54,11 @@
                             Command="{Binding ClickCommand}" 
                             Content="Send"
                             VerticalAlignment="Center"/>
+                    <Button Classes="secondary" 
+                            Command="{Binding SaveToCollectionCommand}" 
+                            Content="Save"
+                            ToolTip.Tip="Save to selected collection"
+                            VerticalAlignment="Center"/>
                     <Button Classes="danger" 
                             Command="{Binding CancelCommand}" 
                             Content="Cancel"

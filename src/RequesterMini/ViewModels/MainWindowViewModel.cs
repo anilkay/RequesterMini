@@ -41,6 +41,7 @@ public class MainWindowViewModel : ViewModelBase
 
     internal ReactiveCommand<Unit, Unit> ClickCommand { get; }
     internal ReactiveCommand<Unit, Unit> CancelCommand { get; }
+    internal ReactiveCommand<Unit, Unit> SaveToCollectionCommand { get; }
     internal ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
     internal ReactiveCommand<Unit, Unit> AddQueryParamCommand { get; }
     internal ReactiveCommand<Unit, Unit> ExportCurlCommand { get; }
@@ -210,6 +211,23 @@ public class MainWindowViewModel : ViewModelBase
         CancelCommand = ReactiveCommand.Create(() =>
         {
             _cts?.Cancel();
+        });
+
+        SaveToCollectionCommand = ReactiveCommand.Create(() =>
+        {
+            var savedHeaders = new Dictionary<string, string>();
+            foreach (var header in Headers)
+            {
+                if (header.IsEnabled && !string.IsNullOrWhiteSpace(header.Key))
+                {
+                    savedHeaders[header.Key] = header.Value;
+                }
+            }
+
+            var dto = new OldRequestDto(SelectedHttpMethod, Url, Body, "", "", savedHeaders, ProxyUrl);
+            MessageBus.Current.SendMessage(
+                JsonSerializer.Serialize(dto, SourceGenerationContext.Default.OldRequestDto),
+                MessageBusConstants.SaveToCollection);
         });
 
         AddHeaderCommand = ReactiveCommand.Create(() =>
