@@ -38,13 +38,15 @@ public record OldRequestDto(string Method, string Url, string Body, string Respo
 
 public class OldRequestsWindowViewModel : ViewModelBase
 {
-    private static readonly string HistoryPath = Path.Combine(
+    /// <summary>
+    /// Where history, collections and environments are kept. Overridable through the constructor so
+    /// tests can point at a temp directory instead of the user's real files.
+    /// </summary>
+    internal static string DefaultDataDirectory { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "RequesterMini",
-        "history.json");
+        "RequesterMini");
 
-    private readonly JsonFileStore.JsonFileStore<List<OldRequestDto>> _store = new(
-        HistoryPath, SourceGenerationContext.Default.ListOldRequestDto);
+    private readonly JsonFileStore.JsonFileStore<List<OldRequestDto>> _store;
 
     public ObservableCollection<OldRequestDto> OldRequests { get; } = [];
 
@@ -52,13 +54,7 @@ public class OldRequestsWindowViewModel : ViewModelBase
 
     internal ReactiveCommand<OldRequestDto, Unit> LoadCommand { get; }
 
-    private static readonly string CollectionsPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "RequesterMini",
-        "collections.json");
-
-    private readonly JsonFileStore.JsonFileStore<List<RequestCollectionDto>> _collectionStore = new(
-        CollectionsPath, SourceGenerationContext.Default.ListRequestCollectionDto);
+    private readonly JsonFileStore.JsonFileStore<List<RequestCollectionDto>> _collectionStore;
 
     public ObservableCollection<CollectionItem> Collections { get; } = [];
 
@@ -82,13 +78,7 @@ public class OldRequestsWindowViewModel : ViewModelBase
 
     internal ReactiveCommand<OldRequestDto, Unit> SaveHistoryToCollectionCommand { get; }
 
-    private static readonly string EnvironmentsPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "RequesterMini",
-        "environments.json");
-
-    private readonly JsonFileStore.JsonFileStore<EnvironmentState> _environmentStore = new(
-        EnvironmentsPath, SourceGenerationContext.Default.EnvironmentState);
+    private readonly JsonFileStore.JsonFileStore<EnvironmentState> _environmentStore;
 
     public ObservableCollection<EnvironmentItem> Environments { get; } = [];
 
@@ -175,8 +165,20 @@ public class OldRequestsWindowViewModel : ViewModelBase
     }
 
     [RequiresUnreferencedCode("Uses ReactiveCommand")]
-    public OldRequestsWindowViewModel()
+    public OldRequestsWindowViewModel() : this(DefaultDataDirectory)
     {
+    }
+
+    [RequiresUnreferencedCode("Uses ReactiveCommand")]
+    internal OldRequestsWindowViewModel(string dataDirectory)
+    {
+        _store = new JsonFileStore.JsonFileStore<List<OldRequestDto>>(
+            Path.Combine(dataDirectory, "history.json"), SourceGenerationContext.Default.ListOldRequestDto);
+        _collectionStore = new JsonFileStore.JsonFileStore<List<RequestCollectionDto>>(
+            Path.Combine(dataDirectory, "collections.json"), SourceGenerationContext.Default.ListRequestCollectionDto);
+        _environmentStore = new JsonFileStore.JsonFileStore<EnvironmentState>(
+            Path.Combine(dataDirectory, "environments.json"), SourceGenerationContext.Default.EnvironmentState);
+
         RemoveCommand = ReactiveCommand.Create<OldRequestDto>(item =>
         {
             OldRequests.Remove(item);

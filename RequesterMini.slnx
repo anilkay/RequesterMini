@@ -28,6 +28,7 @@
     <Project Path="tests/UrlQuery.Tests/UrlQuery.Tests.csproj" />
     <Project Path="tests/HttpAuth.Tests/HttpAuth.Tests.csproj" />
     <Project Path="tests/HttpRequesting.Tests/HttpRequesting.Tests.csproj" />
+    <Project Path="tests/RequesterMini.Tests/RequesterMini.Tests.csproj" />
     <Project Path="tests/RequesterMini.Web.Tests/RequesterMini.Web.Tests.csproj" />
     <Project Path="tests/Templating.Tests/Templating.Tests.csproj" />
   </Folder>

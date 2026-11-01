@@ -16,6 +16,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- ViewModel members are internal by convention, so the test project needs to see them. -->
+    <InternalsVisibleTo Include="RequesterMini.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="..\..\.github\copilot-instructions.md" />
   </ItemGroup>
 

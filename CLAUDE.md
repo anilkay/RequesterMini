@@ -51,12 +51,23 @@ It serves plain HTTP on `8080` behind a TLS-terminating reverse proxy (`X-Forwar
 ### Solution layout
 - `src/RequesterMini/` — the Avalonia `WinExe`. Contains `Views/` (AXAML + code-behind), `ViewModels/`, `Models/`, `Utils/`, `Constants/`.
 - `src/RequesterMini.Web/` — the Blazor Server app (MudBlazor UI). Contains `Components/` (`Pages/`, `Layout/`, `Shared/`), `Services/`, `Models/`, `Utils/`, `Constants/`. Ships with a `Dockerfile` (build context is the repo root) and a root `compose.yaml`.
-- `src/AppLogger/`, `src/CurlExporter/`, `src/JsonFileStore/`, `src/BrunoImporter/`, `src/HttpRequesting/`, `src/HttpAuth/`, `src/SyntaxHighlighter/`, `src/UrlQuery/` — standalone `net10.0` class libraries with zero UI dependencies, each with a paired `tests/*.Tests` project. **Reusable, UI-free logic belongs in a library so it can be unit-tested in isolation**; only UI/ViewModel glue stays in the front ends.
+- `src/AppLogger/`, `src/CurlExporter/`, `src/JsonFileStore/`, `src/BrunoImporter/`, `src/HttpRequesting/`, `src/HttpAuth/`, `src/SyntaxHighlighter/`, `src/UrlQuery/`, `src/Templating/` — standalone `net10.0` class libraries with zero UI dependencies, each with a paired `tests/*.Tests` project. **Reusable, UI-free logic belongs in a library so it can be unit-tested in isolation**; only UI/ViewModel glue stays in the front ends.
+- `tests/RequesterMini.Tests/` — ViewModel tests for the desktop app, which reaches them through `InternalsVisibleTo` since ViewModel members are `internal`. See **Testing the desktop ViewModels** below.
 
 ### Two front ends, one set of libraries
-The desktop app predates the web app and is the reference implementation — leave it alone unless a change is asked for explicitly. The web app deliberately does **not** reference it; the request-sending logic it needs is `src/HttpRequesting` (`HttpRequestRunner`), a library port of the desktop app's `Utils/MakeRequest`. The two are duplicates today; if `MakeRequest` changes, `HttpRequestRunner` needs the same change (or the desktop app should be pointed at the library).
+The desktop app predates the web app and is the reference implementation — leave it alone unless a change is asked for explicitly. The web app deliberately does **not** reference it; the request-sending logic it needs is `src/HttpRequesting` (`HttpRequestRunner`), a library port of the desktop app's `Utils/MakeRequest`. **Those two remain duplicates: a change to one needs the same change in the other** (or the desktop app should finally be pointed at the library). Everything else a feature needs is shared — proxying (`ProxyClientFactory`), auth (`BasicAuth`, `BearerAuth`) and variables (`VariableInterpolator`) all live in libraries both front ends call.
 
-Web-app state lives in two services: `RequestWorkspace` (scoped — the request being composed, one per Blazor circuit) and `RequestHistoryService` (singleton — one `JsonFileStore` over one file, capped at 50 entries). The web app has no `MessageBus`; pages talk through the scoped workspace instead.
+Web-app state lives in four services: `RequestWorkspace` (scoped — the request being composed, one per Blazor circuit) and the singletons `RequestHistoryService`, `CollectionService` and `EnvironmentService`, each a `JsonFileStore` over one file. The web app has no `MessageBus`; pages talk through the scoped workspace and subscribe to the singletons' `Changed` events. The desktop app keeps the same three stores inside `OldRequestsWindowViewModel` and reaches the main window over `MessageBus`.
+
+### Variables
+`{{name}}` placeholders are resolved from the active environment at the moment a request is sent, and for the cURL export. Everything persisted — history, collections — keeps the **template** form, so a reloaded request follows whichever environment is active then. An unknown placeholder is left as written rather than blanked.
+
+### Testing the desktop ViewModels
+Two things make these tests work, and both are easy to trip over:
+- ReactiveUI 24 refuses to run until it is built. `ReactiveTestBase` calls `RxAppBuilder.CreateReactiveUIBuilder().WithCoreServices().BuildApp()` once, then points `RxSchedulers.MainThreadScheduler` at the current thread — outside the app nothing pumps a UI thread.
+- `MessageBus.Current` is a process-wide singleton these ViewModels both publish and listen on, so the assembly sets `DisableTestParallelization`.
+
+`OldRequestsWindowViewModel` takes an optional data directory so tests write to a temp folder rather than the user's real `history.json`, `collections.json` and `environments.json`.
 
 ### Trimming & reflection are hard constraints
 The app publishes trimmed + single-file, and reflection-based JSON is disabled (`JsonSerializerIsReflectionEnabledByDefault=false`). Consequences that shape the whole codebase:
@@ -72,9 +83,16 @@ The app publishes trimmed + single-file, and reflection-based JSON is disabled (
 - **`MessageBus.Current`** for cross-ViewModel/cross-window events, keyed by the string constants in `Constants/MessageBusConstants.cs` (`newjson`, `newrequest`, `loadrequest`). This is how the main window, the old-requests window, and the JSON visualizer window talk to each other without direct references.
 
 ### Persistence
-`JsonFileStore` is a generic `JsonStore<T>` over an `IStoreBackend` (`FileBackend` for disk, `MemoryBackend` for tests). It is **degradation-tolerant**: if a load or save throws, it flips `IsPersistenceAvailable` to false and silently continues in memory-only mode rather than crashing the app. Request history is persisted through this.
+`JsonFileStore` is a generic `JsonStore<T>` over an `IStoreBackend` (`FileBackend` for disk, `MemoryBackend` for tests). It is **degradation-tolerant**: if a load or save throws, it flips `IsPersistenceAvailable` to false and silently continues in memory-only mode rather than crashing the app. History, collections and environments are all persisted through this.
+
+That tolerance has a sharp edge: a type the serializer cannot handle does not throw, it just stops persisting. A record with **two constructors** is the way this has bitten — System.Text.Json cannot tell which to use. Give persisted records one constructor, and cover each store with a round-trip-through-reload test.
 
 ### Libraries at a glance
 - **CurlExporter** — `CurlCommandBuilder`, a fluent builder that turns the current request into a `curl` command string.
 - **BrunoImporter** — `BruYamlParser` / `BrunoFileImporter` import Bruno collection files (both `.bru` and OpenCollection `.yml`) into `BruRequest` objects.
-- **AppLogger** — static `Logger` (initialized once in `Program.Main`) writing through pluggable `ILogSink`s (`FileSink`, `ConsoleSink`); log level is `Debug` in DEBUG builds.
+- **AppLogger** — static `Logger` (initialized once at startup) writing through pluggable `ILogSink`s (`FileSink`, `ConsoleSink`); log level is `Debug` in DEBUG builds.
+- **HttpRequesting** — `HttpRequestRunner` sends a `HttpRequestSpec` and returns `OneOf<RequestSuccess, RequestFailure>`; `ProxyClientFactory` builds the proxied `HttpClient`.
+- **HttpAuth** — `BasicAuth` and `BearerAuth` build Authorization header values; `AuthScheme` is the enum behind the UI's auth dropdown.
+- **UrlQuery** — `UrlQueryCodec` parses and rewrites query strings. `ParseQuery` also reads form bodies, which have the same `key=value&…` shape.
+- **SyntaxHighlighter** — `JsonHighlighter` / `XmlHighlighter` tokenize into UI-free `HighlightSegment`s; each front end maps `TokenKind` to its own colors.
+- **Templating** — `VariableInterpolator` resolves `{{name}}` placeholders; `VariableEnvironment` and `EnvironmentState` are the persisted shapes.
