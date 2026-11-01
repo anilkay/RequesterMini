@@ -141,6 +141,32 @@
                         }
                     </MudStack>
                 </MudTabPanel>
+
+                <MudTabPanel Text="Proxy">
+                    <MudStack Spacing="3">
+                        <MudTextField T="string" @bind-Value="Workspace.ProxyUrl" @bind-Value:after="StateHasChanged"
+                                      Label="Proxy URL" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                      Placeholder="http://proxy-host:8080"
+                                      HelperText="Leave empty to send requests directly." />
+
+                        @if (Workspace.IsProxyEnabled)
+                        {
+                            <MudTextField T="string" @bind-Value="Workspace.ProxyUsername" Label="Proxy username"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+
+                            <MudTextField T="string" @bind-Value="Workspace.ProxyPassword" Label="Proxy password"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                                          InputType="@(_revealProxyPassword ? InputType.Text : InputType.Password)"
+                                          Adornment="Adornment.End"
+                                          AdornmentIcon="@(_revealProxyPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                          OnAdornmentClick="@(() => _revealProxyPassword = !_revealProxyPassword)" />
+
+                            <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Outlined">
+                                The proxy is applied only while a URL is set. Proxy credentials are not saved.
+                            </MudAlert>
+                        }
+                    </MudStack>
+                </MudTabPanel>
             </MudTabs>
         </MudPaper>
     </MudItem>
@@ -152,6 +178,7 @@
 
 @code {
     private bool _revealPassword;
+    private bool _revealProxyPassword;
 
     private async Task SendAsync()
     {

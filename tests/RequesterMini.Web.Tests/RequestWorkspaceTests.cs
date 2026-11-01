@@ -230,6 +230,49 @@ public class RequestWorkspaceTests : IDisposable
     }
 
     [Fact]
+    public async Task SendAsync_MalformedProxyUrl_ReportsItWithoutSending()
+    {
+        var history = NewHistory();
+        var workspace = NewWorkspace(history);
+        workspace.Url = "https://example.test/api";
+        workspace.ProxyUrl = "not a url";
+
+        await workspace.SendAsync();
+
+        Assert.True(workspace.Response!.IsFailure);
+        Assert.Contains("not a url", workspace.Response.Body);
+        Assert.Null(_handler.LastRequest);
+        Assert.Empty(history.Snapshot());
+    }
+
+    [Fact]
+    public async Task SendAsync_ProxyUrl_IsPersistedToHistoryButCredentialsAreNot()
+    {
+        var history = NewHistory();
+        var workspace = NewWorkspace(history);
+        workspace.Url = "https://example.test/api";
+
+        await workspace.SendAsync();
+        var saved = history.Snapshot().Single();
+
+        Assert.Equal("", saved.ProxyUrl);
+        Assert.DoesNotContain("pass", System.Text.Json.JsonSerializer.Serialize(saved));
+    }
+
+    [Fact]
+    public void LoadFrom_EntryWithProxy_RestoresTheProxyUrl()
+    {
+        var workspace = NewWorkspace(NewHistory());
+        var stored = new Models.StoredRequest(
+            "GET", "https://example.test/", "", "Json", "OK", "{}", [], DateTime.UtcNow, "http://proxy.test:8080");
+
+        workspace.LoadFrom(stored);
+
+        Assert.Equal("http://proxy.test:8080", workspace.ProxyUrl);
+        Assert.True(workspace.IsProxyEnabled);
+    }
+
+    [Fact]
     public async Task SendAsync_BlankUrl_DoesNothing()
     {
         var history = NewHistory();

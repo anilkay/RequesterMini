@@ -22,6 +22,11 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reactive.Linq;
 using UrlQuery;
 
+// Imported by alias rather than with a plain using: HttpRequesting also defines RequestSuccess and
+// RequestFailure, which would collide with the RequesterMini.Models pair this file already uses.
+using ProxySettings = HttpRequesting.ProxySettings;
+using ProxyClientFactory = HttpRequesting.ProxyClientFactory;
+
 namespace RequesterMini.ViewModels;
 
 public class MainWindowViewModel : ViewModelBase
@@ -381,24 +386,20 @@ public class MainWindowViewModel : ViewModelBase
             Logger.Info($"Sending {SelectedHttpMethod} request to {Url}");
             HttpClient client = _httpClient;
             HttpClient? proxyClient = null;
-            if (!string.IsNullOrWhiteSpace(ProxyUrl))
+            var proxySettings = new ProxySettings(ProxyUrl, ProxyUsername, ProxyPassword);
+            if (proxySettings.IsEnabled)
             {
-                if (!Uri.TryCreate(ProxyUrl.Trim(), UriKind.Absolute, out var proxyUri))
+                var proxyResult = ProxyClientFactory.Create(proxySettings);
+                if (proxyResult.IsT1)
                 {
-                    ResponseBody = $"Invalid proxy URL: {ProxyUrl}";
+                    ResponseBody = proxyResult.AsT1.Message;
                     ResponseStatusCode = "Error";
                     FinishedTimeUtc = "";
                     RequestTime = "";
                     return;
                 }
-                proxyClient = new HttpClient(new HttpClientHandler
-                {
-                    Proxy = new System.Net.WebProxy(proxyUri)
-                    {
-                        Credentials = string.IsNullOrEmpty(ProxyUsername) ? null : new System.Net.NetworkCredential(ProxyUsername, ProxyPassword)
-                    },
-                    UseProxy = true
-                });
+
+                proxyClient = proxyResult.AsT0;
                 client = proxyClient;
             }
 

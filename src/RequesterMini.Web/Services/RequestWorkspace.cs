@@ -75,6 +75,10 @@ public sealed class RequestWorkspace : IDisposable
     public string AuthPassword { get; set; } = "";
     public string AuthToken { get; set; } = "";
 
+    public string ProxyUrl { get; set; } = "";
+    public string ProxyUsername { get; set; } = "";
+    public string ProxyPassword { get; set; } = "";
+
     public List<HeaderRow> Headers { get; } = [];
     public List<QueryParamRow> QueryParams { get; } = [];
 
@@ -90,6 +94,8 @@ public sealed class RequestWorkspace : IDisposable
     public bool IsBasicAuth => string.Equals(AuthType, "Basic", StringComparison.OrdinalIgnoreCase);
 
     public bool IsBearerAuth => string.Equals(AuthType, "Bearer", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsProxyEnabled => !string.IsNullOrWhiteSpace(ProxyUrl);
 
     public int EnabledHeaderCount => Headers.Count(h => h.IsEnabled && !string.IsNullOrWhiteSpace(h.Key));
 
@@ -121,12 +127,33 @@ public sealed class RequestWorkspace : IDisposable
         _cts?.Dispose();
         _cts = new CancellationTokenSource();
 
+        var proxySettings = new ProxySettings(ProxyUrl, ProxyUsername, ProxyPassword);
+        HttpClient? proxyClient = null;
+
+        if (proxySettings.IsEnabled)
+        {
+            var proxyResult = ProxyClientFactory.Create(proxySettings);
+            if (proxyResult.IsT1)
+            {
+                Response = new ResponseView
+                {
+                    StatusText = "Error",
+                    Body = proxyResult.AsT1.Message,
+                    IsFailure = true,
+                };
+                return;
+            }
+
+            proxyClient = proxyResult.AsT0;
+        }
+
         IsSending = true;
         try
         {
             Logger.Info($"Sending {Method} request to {Url}");
 
-            var runner = new HttpRequestRunner(_httpClientFactory.CreateClient(HttpConstants.RequestClientName));
+            var client = proxyClient ?? _httpClientFactory.CreateClient(HttpConstants.RequestClientName);
+            var runner = new HttpRequestRunner(client);
             var spec = new HttpRequestSpec(Method, Url, Body, BodyType, WithAuthHeader(headers));
             var result = await runner.SendAsync(spec, _cts.Token);
 
@@ -158,6 +185,8 @@ public sealed class RequestWorkspace : IDisposable
         }
         finally
         {
+            // A proxy client is a per-request throwaway, since the proxy can change between sends.
+            proxyClient?.Dispose();
             IsSending = false;
         }
 
@@ -169,7 +198,8 @@ public sealed class RequestWorkspace : IDisposable
             Response.StatusText,
             Response.Body,
             headers,
-            DateTime.UtcNow));
+            DateTime.UtcNow,
+            ProxyUrl));
     }
 
     public void Cancel() => _cts?.Cancel();
@@ -233,6 +263,7 @@ public sealed class RequestWorkspace : IDisposable
         Body = stored.Body;
         BodyType = string.IsNullOrWhiteSpace(stored.BodyType) ? HttpConstants.DefaultBodyType : stored.BodyType;
         Url = stored.Url;
+        ProxyUrl = stored.ProxyUrl;
 
         Headers.Clear();
         foreach (var (key, value) in stored.Headers)
