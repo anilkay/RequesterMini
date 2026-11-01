@@ -120,7 +120,21 @@
                                           Adornment="Adornment.End"
                                           AdornmentIcon="@(_revealPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
                                           OnAdornmentClick="@(() => _revealPassword = !_revealPassword)" />
+                        }
 
+                        @if (Workspace.IsBearerAuth)
+                        {
+                            <MudTextField T="string" @bind-Value="Workspace.AuthToken" Label="Token"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                                          HelperText="The 'Bearer ' prefix is added for you."
+                                          InputType="@(_revealPassword ? InputType.Text : InputType.Password)"
+                                          Adornment="Adornment.End"
+                                          AdornmentIcon="@(_revealPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                          OnAdornmentClick="@(() => _revealPassword = !_revealPassword)" />
+                        }
+
+                        @if (Workspace.IsBasicAuth || Workspace.IsBearerAuth)
+                        {
                             <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Outlined">
                                 Credentials are sent as an Authorization header and are not saved to request history.
                             </MudAlert>

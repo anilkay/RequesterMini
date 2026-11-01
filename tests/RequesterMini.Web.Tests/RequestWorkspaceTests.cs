@@ -172,6 +172,64 @@ public class RequestWorkspaceTests : IDisposable
     }
 
     [Fact]
+    public async Task SendAsync_BearerAuth_SendsTokenButDoesNotPersistIt()
+    {
+        var history = NewHistory();
+        var workspace = NewWorkspace(history);
+        workspace.Url = "https://example.test/api";
+        workspace.AuthType = "Bearer";
+        workspace.AuthToken = "abc123";
+
+        await workspace.SendAsync();
+
+        Assert.Equal("Bearer abc123", _handler.LastRequest!.Headers.GetValues("Authorization").Single());
+        Assert.DoesNotContain("Authorization", history.Snapshot().Single().Headers.Keys);
+    }
+
+    [Fact]
+    public async Task SendAsync_BearerAuth_WinsOverHandTypedAuthorizationHeader()
+    {
+        var workspace = NewWorkspace(NewHistory());
+        workspace.Url = "https://example.test/api";
+        workspace.AddHeader();
+        workspace.Headers[0].Key = "Authorization";
+        workspace.Headers[0].Value = "Basic stale";
+        workspace.AuthType = "Bearer";
+        workspace.AuthToken = "abc123";
+
+        await workspace.SendAsync();
+
+        Assert.Equal("Bearer abc123", _handler.LastRequest!.Headers.GetValues("Authorization").Single());
+    }
+
+    [Fact]
+    public async Task SendAsync_BlankBearerToken_SendsNoAuthorization()
+    {
+        var workspace = NewWorkspace(NewHistory());
+        workspace.Url = "https://example.test/api";
+        workspace.AuthType = "Bearer";
+        workspace.AuthToken = "   ";
+
+        await workspace.SendAsync();
+
+        Assert.False(_handler.LastRequest!.Headers.Contains("Authorization"));
+    }
+
+    [Fact]
+    public void BuildCurl_BearerAuth_AddsAuthorizationHeader()
+    {
+        var workspace = NewWorkspace(NewHistory());
+        workspace.Url = "https://example.test/api";
+        workspace.AuthType = "Bearer";
+        workspace.AuthToken = "abc123";
+
+        var curl = workspace.BuildCurl();
+
+        Assert.Contains("-H 'Authorization: Bearer abc123'", curl);
+        Assert.DoesNotContain("-u ", curl);
+    }
+
+    [Fact]
     public async Task SendAsync_BlankUrl_DoesNothing()
     {
         var history = NewHistory();

@@ -153,8 +153,26 @@
                                       Content="Show password"/>
                         </Grid>
 
+                        <Grid Grid.Row="1"
+                              IsVisible="{Binding IsBearerAuthSelected}"
+                              ColumnDefinitions="Auto, 260"
+                              RowDefinitions="Auto, Auto"
+                              HorizontalAlignment="Left">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Token" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                            <TextBox Grid.Row="0" Grid.Column="1"
+                                     Text="{Binding AuthToken}"
+                                     Watermark="Token (the 'Bearer ' prefix is added for you)"
+                                     PasswordChar="•"
+                                     RevealPassword="{Binding IsPasswordRevealed}"
+                                     Margin="0,0,0,5"/>
+
+                            <CheckBox Grid.Row="1" Grid.Column="1"
+                                      IsChecked="{Binding IsPasswordRevealed}"
+                                      Content="Show token"/>
+                        </Grid>
+
                         <TextBlock Grid.Row="2"
-                                   IsVisible="{Binding IsBasicAuthSelected}"
+                                   IsVisible="{Binding IsAuthCredentialsVisible}"
                                    Text="Credentials are sent as an Authorization header and are not saved to request history."
                                    Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
                                    FontSize="12"

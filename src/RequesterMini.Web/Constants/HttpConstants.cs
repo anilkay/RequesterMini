@@ -7,7 +7,7 @@ public static class HttpConstants
 {
     public static readonly IReadOnlyList<string> Methods = ["GET", "POST", "PUT", "DELETE", "PATCH", "QUERY"];
     public static readonly IReadOnlyList<string> BodyTypes = ["Json", "Xml", "Form", "Text"];
-    public static readonly IReadOnlyList<string> AuthTypes = ["None", "Basic"];
+    public static readonly IReadOnlyList<string> AuthTypes = ["None", "Basic", "Bearer"];
 
     public const string DefaultMethod = "GET";
     public const string DefaultBodyType = "Json";

@@ -93,6 +93,25 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = "";
 
+    internal bool IsBearerAuthSelected
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    internal string AuthToken
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "";
+
+    // Drives the footnote shared by the Basic and Bearer sections.
+    internal bool IsAuthCredentialsVisible
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     internal bool IsPasswordRevealed
     {
         get;
@@ -265,6 +284,13 @@ public class MainWindowViewModel : ViewModelBase
                 }
             }
 
+            // After the user's headers, so the auth selection wins over an Authorization header
+            // typed by hand — the same precedence the sent request uses.
+            if (HasBearerToken)
+            {
+                builder.AddHeader(BearerAuth.HeaderName, BearerAuth.BuildHeaderValue(AuthToken));
+            }
+
             if (!string.IsNullOrEmpty(Body)
                 && Enum.TryParse<BodyType>(SelectedBodyType, ignoreCase: true, out var bodyType))
             {
@@ -416,7 +442,13 @@ public class MainWindowViewModel : ViewModelBase
         });
 
         this.WhenAnyValue(x => x.SelectedAuthType)
-            .Subscribe(_ => IsBasicAuthSelected = CurrentAuthScheme == AuthScheme.Basic);
+            .Subscribe(_ =>
+            {
+                var scheme = CurrentAuthScheme;
+                IsBasicAuthSelected = scheme == AuthScheme.Basic;
+                IsBearerAuthSelected = scheme == AuthScheme.Bearer;
+                IsAuthCredentialsVisible = scheme != AuthScheme.None;
+            });
 
         this.WhenAnyValue(x => x.SelectedHttpMethod)
             .Subscribe(_ => IsBodyEnabled = !string.Equals(SelectedHttpMethod, "GET", StringComparison.OrdinalIgnoreCase));
@@ -434,18 +466,32 @@ public class MainWindowViewModel : ViewModelBase
     private bool HasBasicCredentials =>
         CurrentAuthScheme == AuthScheme.Basic && !(AuthUsername.Length == 0 && AuthPassword.Length == 0);
 
+    private bool HasBearerToken =>
+        CurrentAuthScheme == AuthScheme.Bearer && AuthToken.Trim().Length > 0;
+
     // Returns the headers to send, which is the user's header list plus the generated Authorization
     // header. The credentials are deliberately kept out of the dictionary that gets persisted to the
-    // request history, so passwords never reach the on-disk log. A Basic selection wins over an
-    // Authorization header typed by hand in the Headers tab.
+    // request history, so passwords and tokens never reach the on-disk log. An auth selection wins
+    // over an Authorization header typed by hand in the Headers tab.
     private Dictionary<string, string> BuildRequestHeaders(Dictionary<string, string> headers)
     {
-        if (!HasBasicCredentials) return headers;
-
-        return new Dictionary<string, string>(headers)
+        if (HasBasicCredentials)
         {
-            [BasicAuth.HeaderName] = BasicAuth.BuildHeaderValue(AuthUsername, AuthPassword),
-        };
+            return new Dictionary<string, string>(headers)
+            {
+                [BasicAuth.HeaderName] = BasicAuth.BuildHeaderValue(AuthUsername, AuthPassword),
+            };
+        }
+
+        if (HasBearerToken)
+        {
+            return new Dictionary<string, string>(headers)
+            {
+                [BearerAuth.HeaderName] = BearerAuth.BuildHeaderValue(AuthToken),
+            };
+        }
+
+        return headers;
     }
 
     private void RemoveHeader(HeaderItem header)

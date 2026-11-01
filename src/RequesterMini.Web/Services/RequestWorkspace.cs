@@ -73,6 +73,7 @@ public sealed class RequestWorkspace : IDisposable
     public string AuthType { get; set; } = HttpConstants.DefaultAuthType;
     public string AuthUsername { get; set; } = "";
     public string AuthPassword { get; set; } = "";
+    public string AuthToken { get; set; } = "";
 
     public List<HeaderRow> Headers { get; } = [];
     public List<QueryParamRow> QueryParams { get; } = [];
@@ -87,6 +88,8 @@ public sealed class RequestWorkspace : IDisposable
     public bool IsBodyEnabled => !string.Equals(Method, "GET", StringComparison.OrdinalIgnoreCase);
 
     public bool IsBasicAuth => string.Equals(AuthType, "Basic", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsBearerAuth => string.Equals(AuthType, "Bearer", StringComparison.OrdinalIgnoreCase);
 
     public int EnabledHeaderCount => Headers.Count(h => h.IsEnabled && !string.IsNullOrWhiteSpace(h.Key));
 
@@ -185,6 +188,13 @@ public sealed class RequestWorkspace : IDisposable
         foreach (var (key, value) in CollectHeaders())
         {
             builder.AddHeader(key, value);
+        }
+
+        // After the user's headers, so the auth selection wins over an Authorization header typed by
+        // hand — the same precedence the sent request uses. Bearer has no curl flag of its own.
+        if (HasBearerToken)
+        {
+            builder.AddHeader(BearerAuth.HeaderName, BearerAuth.BuildHeaderValue(AuthToken));
         }
 
         if (!string.IsNullOrEmpty(Body) && Enum.TryParse<CurlExporter.BodyType>(_bodyType, ignoreCase: true, out var parsed))
@@ -304,6 +314,8 @@ public sealed class RequestWorkspace : IDisposable
     private bool HasBasicCredentials =>
         IsBasicAuth && !(AuthUsername.Length == 0 && AuthPassword.Length == 0);
 
+    private bool HasBearerToken => IsBearerAuth && AuthToken.Trim().Length > 0;
+
     /// <summary>The user's enabled header rows. This is also what gets persisted to history.</summary>
     private Dictionary<string, string> CollectHeaders()
     {
@@ -321,16 +333,27 @@ public sealed class RequestWorkspace : IDisposable
 
     /// <summary>
     /// Adds the generated Authorization header for sending only — credentials stay out of the
-    /// dictionary that reaches the history file, so passwords never hit disk. A Basic selection wins
-    /// over an Authorization header typed by hand in the Headers tab.
+    /// dictionary that reaches the history file, so passwords and tokens never hit disk. An auth
+    /// selection wins over an Authorization header typed by hand in the Headers tab.
     /// </summary>
     private Dictionary<string, string> WithAuthHeader(Dictionary<string, string> headers)
     {
-        if (!HasBasicCredentials) return headers;
-
-        return new Dictionary<string, string>(headers)
+        if (HasBasicCredentials)
         {
-            [BasicAuth.HeaderName] = BasicAuth.BuildHeaderValue(AuthUsername, AuthPassword),
-        };
+            return new Dictionary<string, string>(headers)
+            {
+                [BasicAuth.HeaderName] = BasicAuth.BuildHeaderValue(AuthUsername, AuthPassword),
+            };
+        }
+
+        if (HasBearerToken)
+        {
+            return new Dictionary<string, string>(headers)
+            {
+                [BearerAuth.HeaderName] = BearerAuth.BuildHeaderValue(AuthToken),
+            };
+        }
+
+        return headers;
     }
 }
