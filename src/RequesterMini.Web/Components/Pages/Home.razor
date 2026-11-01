@@ -48,6 +48,8 @@
             Export cURL
         </MudButton>
 
+        <SaveToCollectionMenu Request="Workspace.ToStoredRequest" />
+
         <MudFileUpload T="IBrowserFile" FilesChanged="ImportBruAsync" Accept=".bru,.yml,.yaml"
                        MaxFileSize="1048576" Context="upload">
             <CustomContent>

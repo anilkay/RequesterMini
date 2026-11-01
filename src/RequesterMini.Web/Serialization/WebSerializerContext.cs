@@ -10,4 +10,6 @@ namespace RequesterMini.Web.Serialization;
 [JsonSourceGenerationOptions(WriteIndented = true)]
 [JsonSerializable(typeof(StoredRequest))]
 [JsonSerializable(typeof(List<StoredRequest>))]
+[JsonSerializable(typeof(StoredCollection))]
+[JsonSerializable(typeof(List<StoredCollection>))]
 internal partial class WebSerializerContext : JsonSerializerContext;

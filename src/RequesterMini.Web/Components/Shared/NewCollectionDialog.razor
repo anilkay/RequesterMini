@@ -1,0 +1,47 @@
+@* Asks for a collection name. Returns the trimmed name, or a cancelled result. *@
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField T="string" @bind-Value="_name" Label="Collection name" Variant="Variant.Outlined"
+                      Immediate="true" AutoFocus="true" OnKeyUp="OnKeyUp"
+                      Error="@(_error is not null)" ErrorText="@_error" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="@string.IsNullOrWhiteSpace(_name)">
+            Create
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = null!;
+
+    /// <summary>Names already taken, so the clash is reported here rather than silently ignored.</summary>
+    [Parameter] public IReadOnlyCollection<string> ExistingNames { get; set; } = [];
+
+    private string _name = "";
+    private string? _error;
+
+    private void Submit()
+    {
+        var trimmed = _name.Trim();
+        if (trimmed.Length == 0) return;
+
+        if (ExistingNames.Any(n => string.Equals(n, trimmed, StringComparison.OrdinalIgnoreCase)))
+        {
+            _error = "A collection with that name already exists.";
+            return;
+        }
+
+        Dialog.Close(DialogResult.Ok(trimmed));
+    }
+
+    private void OnKeyUp(KeyboardEventArgs args)
+    {
+        if (args.Key is "Enter") Submit();
+    }
+
+    private void Cancel() => Dialog.Cancel();
+}

@@ -34,7 +34,7 @@
         <MudTh>URL</MudTh>
         <MudTh>Status</MudTh>
         <MudTh>When (UTC)</MudTh>
-        <MudTh Style="width:160px" />
+        <MudTh Style="width:200px" />
     </HeaderContent>
 
     <RowTemplate>
@@ -57,6 +57,7 @@
                                    Icon="@(ReferenceEquals(_expanded, context) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
                                    OnClick="@(() => Toggle(context))" aria-label="Toggle details" />
                 </MudTooltip>
+                <SaveToCollectionMenu Request="@(() => context)" IconOnly="true" />
                 <MudTooltip Text="Load into editor">
                     <MudIconButton Size="Size.Small" Color="Color.Primary" Icon="@Icons.Material.Filled.OpenInNew"
                                    OnClick="@(() => Load(context))" aria-label="Load request" />

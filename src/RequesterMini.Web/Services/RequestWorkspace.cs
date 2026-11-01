@@ -204,6 +204,13 @@ public sealed class RequestWorkspace : IDisposable
 
     public void Cancel() => _cts?.Cancel();
 
+    /// <summary>
+    /// Snapshots the request being composed, for saving to a collection. The response is left out —
+    /// a collection holds the request, not whatever reply it last produced.
+    /// </summary>
+    public StoredRequest ToStoredRequest() =>
+        new(Method, Url, Body, BodyType, "", "", CollectHeaders(), DateTime.UtcNow, ProxyUrl);
+
     public string BuildCurl()
     {
         var builder = new CurlCommandBuilder()

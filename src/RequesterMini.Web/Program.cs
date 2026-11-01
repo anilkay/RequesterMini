@@ -42,6 +42,7 @@ builder.Services.AddHttpClient(HttpConstants.RequestClientName, client =>
     });
 
 builder.Services.AddSingleton(_ => new RequestHistoryService(Path.Combine(dataDirectory, "history.json")));
+builder.Services.AddSingleton(_ => new CollectionService(Path.Combine(dataDirectory, "collections.json")));
 builder.Services.AddScoped<RequestWorkspace>();
 
 builder.Services.AddHealthChecks();

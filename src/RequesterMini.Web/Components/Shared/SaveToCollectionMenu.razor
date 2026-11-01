@@ -1,0 +1,74 @@
+@* Picks a destination collection and saves the supplied request to it. *@
+@implements IDisposable
+@inject CollectionService Collections
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+@* MudMenu renders its own activator from Label/Icon rather than ActivatorContent: in MudBlazor 9
+   an ActivatorContent button gets no click handler wired to it, so the menu never opens. *@
+<MudMenu Label="@(IconOnly ? null : "Save to collection")"
+         Icon="@(IconOnly ? Icons.Material.Filled.BookmarkAdd : null)"
+         StartIcon="@(IconOnly ? null : Icons.Material.Filled.BookmarkAdd)"
+         Variant="Variant.Outlined"
+         Size="Size.Small"
+         AriaLabel="Save to collection"
+         AnchorOrigin="Origin.BottomLeft"
+         TransformOrigin="Origin.TopLeft">
+    @foreach (var collection in _collections)
+    {
+        <MudMenuItem OnClick="@(() => Save(collection.Name))">@collection.Name</MudMenuItem>
+    }
+    @if (_collections.Count > 0)
+    {
+        <MudDivider />
+    }
+    <MudMenuItem Icon="@Icons.Material.Filled.CreateNewFolder" OnClick="SaveToNewAsync">
+        New collection…
+    </MudMenuItem>
+</MudMenu>
+
+@code {
+    /// <summary>Builds the request to save, read at the moment the user picks a destination.</summary>
+    [Parameter, EditorRequired] public Func<StoredRequest> Request { get; set; } = null!;
+
+    /// <summary>Renders as a compact icon, for use inside a table row.</summary>
+    [Parameter] public bool IconOnly { get; set; }
+
+    private IReadOnlyList<StoredCollection> _collections = [];
+
+    protected override void OnInitialized()
+    {
+        _collections = Collections.Snapshot();
+        Collections.Changed += OnCollectionsChanged;
+    }
+
+    public void Dispose() => Collections.Changed -= OnCollectionsChanged;
+
+    private void OnCollectionsChanged()
+    {
+        _collections = Collections.Snapshot();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void Save(string collectionName)
+    {
+        Collections.AddRequest(collectionName, Request());
+        Snackbar.Add($"Saved to {collectionName}", Severity.Success);
+    }
+
+    private async Task SaveToNewAsync()
+    {
+        var parameters = new DialogParameters<NewCollectionDialog>
+        {
+            { x => x.ExistingNames, _collections.Select(c => c.Name).ToList() },
+        };
+
+        var dialog = await DialogService.ShowAsync<NewCollectionDialog>("New collection", parameters);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: string name })
+        {
+            Save(name);
+        }
+    }
+}

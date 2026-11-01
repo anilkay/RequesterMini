@@ -1,0 +1,163 @@
+@page "/collections"
+@implements IDisposable
+@* The injected service cannot be called Collections: that is this component's own class name. *@
+@inject CollectionService CollectionStore
+@inject RequestWorkspace Workspace
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>RequesterMini — Collections</PageTitle>
+
+@if (!CollectionStore.IsPersistenceAvailable)
+{
+    <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-4">
+        Collections could not be written to disk — they are kept in memory only until the app restarts.
+    </MudAlert>
+}
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h6">Collections</MudText>
+    <MudSpacer />
+    <MudButton StartIcon="@Icons.Material.Filled.CreateNewFolder" Color="Color.Primary"
+               Variant="Variant.Filled" OnClick="CreateAsync">
+        New collection
+    </MudButton>
+</MudStack>
+
+@if (_collections.Count == 0)
+{
+    <MudPaper Elevation="1" Class="pa-8">
+        <MudStack AlignItems="AlignItems.Center">
+            <MudIcon Icon="@Icons.Material.Outlined.FolderOpen" Size="Size.Large" Class="mud-text-secondary" />
+            <MudText Class="mud-text-secondary">No collections yet.</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                Save a request from the Request or History page to start one.
+            </MudText>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    <MudExpansionPanels MultiExpansion="true">
+        @foreach (var collection in _collections)
+        {
+            <MudExpansionPanel>
+                <TitleContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" />
+                        <MudText Typo="Typo.subtitle1">@collection.Name</MudText>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text">
+                            @collection.Requests.Count
+                        </MudChip>
+                        <MudSpacer />
+                        <MudTooltip Text="Delete collection">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                           OnClick="@(() => DeleteAsync(collection))"
+                                           aria-label="Delete collection" />
+                        </MudTooltip>
+                    </MudStack>
+                </TitleContent>
+                <ChildContent>
+                    @if (collection.Requests.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">This collection is empty.</MudText>
+                    }
+                    else
+                    {
+                        <MudSimpleTable Dense="true" Hover="true">
+                            <tbody>
+                                @for (var i = 0; i < collection.Requests.Count; i++)
+                                {
+                                    var request = collection.Requests[i];
+                                    var index = i;
+                                    <tr>
+                                        <td style="width:90px">
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                                                     Color="@MethodPalette.For(request.Method)">
+                                                @request.Method
+                                            </MudChip>
+                                        </td>
+                                        <td class="history-url">@request.Url</td>
+                                        <td style="width:110px">
+                                            <MudStack Row="true" Spacing="0" Justify="Justify.FlexEnd">
+                                                <MudTooltip Text="Load into editor">
+                                                    <MudIconButton Size="Size.Small" Color="Color.Primary"
+                                                                   Icon="@Icons.Material.Filled.OpenInNew"
+                                                                   OnClick="@(() => Load(request))"
+                                                                   aria-label="Load request" />
+                                                </MudTooltip>
+                                                <MudTooltip Text="Remove from collection">
+                                                    <MudIconButton Size="Size.Small" Color="Color.Error"
+                                                                   Icon="@Icons.Material.Filled.Close"
+                                                                   OnClick="@(() => CollectionStore.RemoveRequest(collection.Name, index))"
+                                                                   aria-label="Remove request" />
+                                                </MudTooltip>
+                                            </MudStack>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+                    }
+                </ChildContent>
+            </MudExpansionPanel>
+        }
+    </MudExpansionPanels>
+}
+
+@code {
+    private IReadOnlyList<StoredCollection> _collections = [];
+
+    protected override void OnInitialized()
+    {
+        _collections = CollectionStore.Snapshot();
+        CollectionStore.Changed += OnCollectionsChanged;
+    }
+
+    public void Dispose() => CollectionStore.Changed -= OnCollectionsChanged;
+
+    private void OnCollectionsChanged()
+    {
+        _collections = CollectionStore.Snapshot();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CreateAsync()
+    {
+        var parameters = new DialogParameters<NewCollectionDialog>
+        {
+            { x => x.ExistingNames, _collections.Select(c => c.Name).ToList() },
+        };
+
+        var dialog = await DialogService.ShowAsync<NewCollectionDialog>("New collection", parameters);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: string name })
+        {
+            CollectionStore.Create(name);
+        }
+    }
+
+    private async Task DeleteAsync(StoredCollection collection)
+    {
+        var message = collection.Requests.Count == 0
+            ? $"Delete the collection \"{collection.Name}\"?"
+            : $"Delete \"{collection.Name}\" and the {collection.Requests.Count} request(s) in it? This cannot be undone.";
+
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Delete collection", message, yesText: "Delete", cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            CollectionStore.Delete(collection.Name);
+        }
+    }
+
+    private void Load(StoredRequest request)
+    {
+        Workspace.LoadFrom(request);
+        Snackbar.Add("Request loaded into the editor", Severity.Success);
+        Navigation.NavigateTo("/");
+    }
+}
