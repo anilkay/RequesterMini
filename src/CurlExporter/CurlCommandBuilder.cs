@@ -14,7 +14,7 @@ public class CurlCommandBuilder
     {
         [BodyType.Json] = "application/json",
         [BodyType.Xml] = "application/xml",
-        [BodyType.Form] = "multipart/form-data",
+        [BodyType.Form] = "application/x-www-form-urlencoded",
         [BodyType.Text] = "text/plain"
     };
 

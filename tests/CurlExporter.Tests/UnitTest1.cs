@@ -230,7 +230,7 @@ public class CurlCommandBuilderTests
     [Theory]
     [InlineData(BodyType.Json, "application/json")]
     [InlineData(BodyType.Xml, "application/xml")]
-    [InlineData(BodyType.Form, "multipart/form-data")]
+    [InlineData(BodyType.Form, "application/x-www-form-urlencoded")]
     [InlineData(BodyType.Text, "text/plain")]
     public void SetBody_WithBodyType_MapsToCorrectContentType(BodyType bodyType, string expectedContentType)
     {

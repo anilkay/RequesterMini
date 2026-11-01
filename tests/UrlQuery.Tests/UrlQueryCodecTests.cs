@@ -186,4 +186,58 @@ public class UrlQueryCodecTests
     {
         Assert.Equal(url, UrlQueryCodec.Build(url, UrlQueryCodec.Parse(url)));
     }
+
+    [Fact]
+    public void ParseQuery_BarePairs_AreParsedInOrder()
+    {
+        var result = UrlQueryCodec.ParseQuery("name=ada&role=engineer");
+
+        Assert.Collection(result,
+            first => Assert.Equal(("name", "ada"), (first.Key, first.Value)),
+            second => Assert.Equal(("role", "engineer"), (second.Key, second.Value)));
+    }
+
+    [Fact]
+    public void ParseQuery_EscapedValue_IsUnescaped()
+    {
+        Assert.Equal("hello world", UrlQueryCodec.ParseQuery("q=hello%20world").Single().Value);
+    }
+
+    [Fact]
+    public void ParseQuery_SegmentWithoutEquals_YieldsEmptyValue()
+    {
+        var single = UrlQueryCodec.ParseQuery("flag").Single();
+
+        Assert.Equal("flag", single.Key);
+        Assert.Equal("", single.Value);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("&")]
+    [InlineData("=novalue")]
+    public void ParseQuery_NothingUsable_ReturnsEmpty(string query)
+    {
+        Assert.Empty(UrlQueryCodec.ParseQuery(query));
+    }
+
+    [Fact]
+    public void ParseQuery_Plus_StaysLiteral()
+    {
+        Assert.Equal("a+b", UrlQueryCodec.ParseQuery("q=a+b").Single().Value);
+    }
+
+    [Fact]
+    public void ParseQuery_Null_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => UrlQueryCodec.ParseQuery(null!));
+    }
+
+    [Fact]
+    public void Parse_UrlWithQuery_MatchesParseQueryOfSamePairs()
+    {
+        Assert.Equal(
+            UrlQueryCodec.ParseQuery("a=1&b=2"),
+            UrlQueryCodec.Parse("https://example.com/path?a=1&b=2"));
+    }
 }

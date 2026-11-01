@@ -2,12 +2,14 @@ using OneOf;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using RequesterMini.Models;
 using RequesterMini.Utils.Timers;
+using UrlQuery;
 
 namespace RequesterMini.Utils;
 public class MakeRequest {
@@ -53,9 +55,11 @@ public class MakeRequest {
                         content = new StringContent(_methodBody, Encoding.UTF8, "application/xml");
                         break;
                     case "form":
-                        var formData = new MultipartFormDataContent();
-                        formData.Add(new StringContent(_methodBody), "fieldName");
-                        content = formData;
+                        // Read as key=value&key2=value2 and re-encode, so what reaches the wire is
+                        // valid regardless of how the user escaped what they typed.
+                        content = new FormUrlEncodedContent(
+                            UrlQueryCodec.ParseQuery(_methodBody)
+                                .Select(p => new KeyValuePair<string, string>(p.Key, p.Value)));
                         break;
                     default:
                         content = new StringContent(_methodBody);

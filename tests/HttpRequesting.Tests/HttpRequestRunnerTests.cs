@@ -31,6 +31,42 @@ public class HttpRequestRunnerTests
     }
 
     [Fact]
+    public async Task SendAsync_FormBody_IsSentUrlEncoded()
+    {
+        var handler = new StubHandler();
+        var runner = new HttpRequestRunner(ClientFor(handler));
+
+        await runner.SendAsync(new HttpRequestSpec("POST", "https://example.test/", "name=ada&role=engineer", "Form"));
+
+        Assert.Equal("application/x-www-form-urlencoded", handler.LastRequest!.Content!.Headers.ContentType!.MediaType);
+        Assert.Equal("name=ada&role=engineer", handler.LastRequestBody);
+    }
+
+    [Fact]
+    public async Task SendAsync_FormBodyWithSpecialCharacters_IsReEncoded()
+    {
+        var handler = new StubHandler();
+        var runner = new HttpRequestRunner(ClientFor(handler));
+
+        await runner.SendAsync(new HttpRequestSpec("POST", "https://example.test/", "q=hello world&tag=a=b", "Form"));
+
+        // The space is escaped and the value's '=' no longer reads as a separator.
+        Assert.Equal("q=hello+world&tag=a%3Db", handler.LastRequestBody);
+    }
+
+    [Fact]
+    public async Task SendAsync_EmptyFormBody_SendsEmptyContent()
+    {
+        var handler = new StubHandler();
+        var runner = new HttpRequestRunner(ClientFor(handler));
+
+        await runner.SendAsync(new HttpRequestSpec("POST", "https://example.test/", "", "Form"));
+
+        Assert.Equal("", handler.LastRequestBody);
+        Assert.Equal("application/x-www-form-urlencoded", handler.LastRequest!.Content!.Headers.ContentType!.MediaType);
+    }
+
+    [Fact]
     public async Task SendAsync_ContentHeader_GoesToContentHeaders()
     {
         var handler = new StubHandler();

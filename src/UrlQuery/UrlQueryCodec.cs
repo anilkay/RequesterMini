@@ -18,15 +18,27 @@ public static class UrlQueryCodec
     {
         ArgumentNullException.ThrowIfNull(url);
 
-        var result = new List<QueryParam>();
-
         // The fragment follows the query, so drop it before looking for '?'.
         var withoutFragment = SplitFragment(url).body;
 
         int queryStart = withoutFragment.IndexOf('?');
-        if (queryStart < 0) return result;
+        return queryStart < 0 ? [] : ParseQuery(withoutFragment[(queryStart + 1)..]);
+    }
 
-        var query = withoutFragment[(queryStart + 1)..];
+    /// <summary>
+    /// Parses a bare <c>key=value&amp;key2=value2</c> string — a query string without its leading '?',
+    /// which is also the shape of an <c>application/x-www-form-urlencoded</c> body.
+    /// </summary>
+    /// <remarks>
+    /// As elsewhere in this codec, '+' is kept as a literal plus rather than decoded to a space.
+    /// Form encoding would read it as a space, but this parses text a user is still typing, where a
+    /// plus far more often means itself.
+    /// </remarks>
+    public static List<QueryParam> ParseQuery(string query)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        var result = new List<QueryParam>();
         if (query.Length == 0) return result;
 
         foreach (var segment in query.Split('&'))

@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using HttpRequesting.Timers;
 using OneOf;
+using UrlQuery;
 
 namespace HttpRequesting;
 
@@ -98,9 +99,18 @@ public sealed class HttpRequestRunner
         {
             "json" => new StringContent(body, Encoding.UTF8, "application/json"),
             "xml" => new StringContent(body, Encoding.UTF8, "application/xml"),
-            "form" => new MultipartFormDataContent { { new StringContent(body), "fieldName" } },
+            "form" => BuildFormContent(body),
             _ => new StringContent(body)
         };
+
+    /// <summary>
+    /// Reads the body as <c>key=value&amp;key2=value2</c> and sends it form-encoded. The pairs are
+    /// re-encoded rather than passed through, so what reaches the wire is valid regardless of how
+    /// the user escaped what they typed.
+    /// </summary>
+    private static HttpContent BuildFormContent(string body) =>
+        new FormUrlEncodedContent(
+            UrlQueryCodec.ParseQuery(body).Select(p => new KeyValuePair<string, string>(p.Key, p.Value)));
 
     private static Dictionary<string, string> CollectHeaders(HttpResponseMessage response)
     {
