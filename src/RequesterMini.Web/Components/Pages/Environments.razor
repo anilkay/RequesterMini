@@ -1,0 +1,198 @@
+@page "/environments"
+@implements IDisposable
+@inject EnvironmentService EnvironmentStore
+@inject IDialogService DialogService
+
+<PageTitle>RequesterMini — Environments</PageTitle>
+
+@if (!EnvironmentStore.IsPersistenceAvailable)
+{
+    <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-4">
+        Environments could not be written to disk — they are kept in memory only until the app restarts.
+    </MudAlert>
+}
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h6">Environments</MudText>
+    <MudSpacer />
+    <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary" Variant="Variant.Filled"
+               OnClick="CreateAsync">
+        New environment
+    </MudButton>
+</MudStack>
+
+<MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Outlined" Class="mb-4">
+    Write <code>@("{{name}}")</code> in a URL, header, body, auth field or proxy URL. It is replaced
+    from the active environment when the request is sent; what you save to history keeps the
+    placeholder.
+</MudAlert>
+
+@if (_environments.Count == 0)
+{
+    <MudPaper Elevation="1" Class="pa-8">
+        <MudStack AlignItems="AlignItems.Center">
+            <MudIcon Icon="@Icons.Material.Outlined.Layers" Size="Size.Large" Class="mud-text-secondary" />
+            <MudText Class="mud-text-secondary">No environments yet.</MudText>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    <MudExpansionPanels MultiExpansion="true">
+        @foreach (var environment in _environments)
+        {
+            var name = environment.Name;
+            var isActive = string.Equals(name, _activeName, StringComparison.OrdinalIgnoreCase);
+
+            <MudExpansionPanel>
+                <TitleContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.Layers" Size="Size.Small" />
+                        <MudText Typo="Typo.subtitle1">@name</MudText>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text">
+                            @environment.Variables.Count
+                        </MudChip>
+                        @if (isActive)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">
+                                Active
+                            </MudChip>
+                        }
+                        else
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Text"
+                                       OnClick="@(() => EnvironmentStore.Activate(name))">
+                                Make active
+                            </MudButton>
+                        }
+                        <MudSpacer />
+                        <MudTooltip Text="Delete environment">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                           OnClick="@(() => DeleteAsync(environment))"
+                                           aria-label="Delete environment" />
+                        </MudTooltip>
+                    </MudStack>
+                </TitleContent>
+                <ChildContent>
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <tbody>
+                            @foreach (var (key, value) in environment.Variables)
+                            {
+                                var originalKey = key;
+                                <tr>
+                                    <td style="width:260px">
+                                        <MudTextField T="string" Value="@originalKey"
+                                                      ValueChanged="@(v => Rename(name, originalKey, v))"
+                                                      Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                    </td>
+                                    <td>
+                                        <MudTextField T="string" Value="@value"
+                                                      ValueChanged="@(v => EnvironmentStore.SetVariable(name, originalKey, v))"
+                                                      Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                    </td>
+                                    <td style="width:56px">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Error"
+                                                       Size="Size.Small"
+                                                       OnClick="@(() => EnvironmentStore.RemoveVariable(name, originalKey))"
+                                                       aria-label="Remove variable" />
+                                    </td>
+                                </tr>
+                            }
+                            <tr>
+                                <td>
+                                    <MudTextField T="string" @bind-Value="_newKey" Placeholder="New variable"
+                                                  Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                </td>
+                                <td>
+                                    <MudTextField T="string" @bind-Value="_newValue" Placeholder="Value"
+                                                  Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                </td>
+                                <td>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary"
+                                                   Size="Size.Small" OnClick="@(() => AddVariable(name))"
+                                                   aria-label="Add variable" />
+                                </td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </ChildContent>
+            </MudExpansionPanel>
+        }
+    </MudExpansionPanels>
+}
+
+@code {
+    private IReadOnlyList<VariableEnvironment> _environments = [];
+    private string _activeName = "";
+    private string _newKey = "";
+    private string _newValue = "";
+
+    protected override void OnInitialized()
+    {
+        Refresh();
+        EnvironmentStore.Changed += OnChanged;
+    }
+
+    public void Dispose() => EnvironmentStore.Changed -= OnChanged;
+
+    private void OnChanged()
+    {
+        Refresh();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void Refresh()
+    {
+        _environments = EnvironmentStore.Snapshot();
+        _activeName = EnvironmentStore.ActiveName;
+    }
+
+    private void Rename(string environmentName, string oldKey, string newKey)
+    {
+        if (!EnvironmentStore.RenameVariable(environmentName, oldKey, newKey))
+        {
+            // Blank or already used: put the field back to what the store still holds.
+            Refresh();
+            StateHasChanged();
+        }
+    }
+
+    private void AddVariable(string environmentName)
+    {
+        if (string.IsNullOrWhiteSpace(_newKey)) return;
+
+        EnvironmentStore.SetVariable(environmentName, _newKey, _newValue);
+        _newKey = "";
+        _newValue = "";
+    }
+
+    private async Task CreateAsync()
+    {
+        var parameters = new DialogParameters<NameDialog>
+        {
+            { x => x.ExistingNames, _environments.Select(e => e.Name).ToList() },
+            { x => x.Label, "Environment name" },
+        };
+
+        var dialog = await DialogService.ShowAsync<NameDialog>("New environment", parameters);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: string name })
+        {
+            EnvironmentStore.Create(name);
+        }
+    }
+
+    private async Task DeleteAsync(VariableEnvironment environment)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Delete environment",
+            $"Delete \"{environment.Name}\" and its {environment.Variables.Count} variable(s)? This cannot be undone.",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            EnvironmentStore.Delete(environment.Name);
+        }
+    }
+}

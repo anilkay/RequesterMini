@@ -140,5 +140,80 @@
             </ScrollViewer>
         </Grid>
     </TabItem>
+    <TabItem Header="Environments">
+        <Grid RowDefinitions="Auto, Auto, *">
+            <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,10,0,5">
+                <TextBox Text="{Binding NewEnvironmentName}" Watermark="New environment name"/>
+                <Button Grid.Column="1" Command="{Binding AddEnvironmentCommand}" Content="+" Margin="5,0,0,0"/>
+            </Grid>
+
+            <TextBlock Grid.Row="1"
+                       Text="Write {{name}} in a URL, header, body, auth field or proxy URL. It is replaced from the active environment when the request is sent."
+                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                       FontSize="12"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,8"/>
+
+            <ScrollViewer Grid.Row="2">
+                <ItemsControl ItemsSource="{Binding Environments}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:EnvironmentItem">
+                            <Expander HorizontalAlignment="Stretch" Margin="0,2">
+                                <Expander.Header>
+                                    <Grid ColumnDefinitions="*, Auto, Auto">
+                                        <TextBlock Text="{Binding Name}" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="Active"
+                                                   IsVisible="{Binding IsActive}"
+                                                   Foreground="#28A745"
+                                                   FontSize="11"
+                                                   VerticalAlignment="Center"
+                                                   Margin="6,0"/>
+                                        <Button Grid.Column="1"
+                                                IsVisible="{Binding !IsActive}"
+                                                Command="{Binding $parent[UserControl].((vm:OldRequestsWindowViewModel)DataContext).ActivateEnvironmentCommand}"
+                                                CommandParameter="{Binding}"
+                                                Content="Make active"
+                                                FontSize="11"
+                                                Background="Transparent"
+                                                Padding="6,3"/>
+                                        <Button Grid.Column="2"
+                                                Command="{Binding $parent[UserControl].((vm:OldRequestsWindowViewModel)DataContext).RemoveEnvironmentCommand}"
+                                                CommandParameter="{Binding}"
+                                                Content="🗑"
+                                                Background="Transparent"
+                                                Padding="6,3"/>
+                                    </Grid>
+                                </Expander.Header>
+                                <StackPanel>
+                                    <ItemsControl ItemsSource="{Binding Variables}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:VariableItem">
+                                                <Grid ColumnDefinitions="200, *, Auto" Margin="0,2">
+                                                    <TextBox Text="{Binding Key}" Watermark="name"/>
+                                                    <TextBox Grid.Column="1" Text="{Binding Value}" Watermark="value" Margin="5,0"/>
+                                                    <Button Grid.Column="2"
+                                                            Command="{Binding RemoveCommand}"
+                                                            Content="✕"
+                                                            Background="Transparent"
+                                                            Padding="6,3"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Button Command="{Binding $parent[UserControl].((vm:OldRequestsWindowViewModel)DataContext).AddVariableCommand}"
+                                            CommandParameter="{Binding}"
+                                            Content="+ Add Variable"
+                                            Background="Transparent"
+                                            HorizontalAlignment="Left"
+                                            Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Expander>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </TabItem>
     </TabControl>
 </UserControl>

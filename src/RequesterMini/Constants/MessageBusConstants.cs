@@ -6,5 +6,6 @@
         internal static readonly string NewRequest = "newrequest";
         internal static readonly string LoadRequest = "loadrequest";
         internal static readonly string SaveToCollection = "savetocollection";
+        internal static readonly string ActiveEnvironmentChanged = "activeenvironmentchanged";
     }
 }

@@ -17,6 +17,10 @@
     max-width: 320px;
 }
 
+.environment-select {
+    max-width: 200px;
+}
+
 .history-url {
     max-width: 520px;
     overflow-wrap: anywhere;

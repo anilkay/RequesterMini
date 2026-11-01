@@ -1,4 +1,6 @@
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject EnvironmentService EnvironmentStore
 
 <MudThemeProvider @ref="_themeProvider" @bind-IsDarkMode="_isDarkMode" Theme="_theme" />
 <MudPopoverProvider />
@@ -13,6 +15,17 @@
             <MudIcon Icon="@Icons.Material.Filled.Http" Class="mr-2" />
             <MudText Typo="Typo.h6">RequesterMini</MudText>
             <MudSpacer />
+            <MudTooltip Text="Active environment">
+                <MudSelect T="string" Value="@_activeEnvironment" ValueChanged="OnEnvironmentChanged"
+                           Dense="true" Margin="Margin.Dense" Variant="Variant.Outlined"
+                           Class="environment-select mr-2" Placeholder="No environment"
+                           Clearable="true" aria-label="Active environment">
+                    @foreach (var environment in _environments)
+                    {
+                        <MudSelectItem T="string" Value="@environment.Name">@environment.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudTooltip>
             <MudTooltip Text="@(_isDarkMode ? "Switch to light theme" : "Switch to dark theme")">
                 <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
                                Color="Color.Inherit"
@@ -26,6 +39,7 @@
             <MudNavMenu>
                 <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Send">Request</MudNavLink>
                 <MudNavLink Href="/collections" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Folder">Collections</MudNavLink>
+                <MudNavLink Href="/environments" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Layers">Environments</MudNavLink>
                 <MudNavLink Href="/history" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.History">History</MudNavLink>
             </MudNavMenu>
         </MudDrawer>
@@ -57,6 +71,36 @@
             Default = new DefaultTypography { FontFamily = ["Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"] },
         },
     };
+
+    private IReadOnlyList<VariableEnvironment> _environments = [];
+    private string? _activeEnvironment;
+
+    protected override void OnInitialized()
+    {
+        RefreshEnvironments();
+        EnvironmentStore.Changed += OnEnvironmentsChanged;
+    }
+
+    public void Dispose() => EnvironmentStore.Changed -= OnEnvironmentsChanged;
+
+    private void OnEnvironmentsChanged()
+    {
+        RefreshEnvironments();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void RefreshEnvironments()
+    {
+        _environments = EnvironmentStore.Snapshot();
+        var active = EnvironmentStore.ActiveName;
+        _activeEnvironment = active.Length == 0 ? null : active;
+    }
+
+    private void OnEnvironmentChanged(string? name)
+    {
+        _activeEnvironment = name;
+        EnvironmentStore.Activate(name);
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

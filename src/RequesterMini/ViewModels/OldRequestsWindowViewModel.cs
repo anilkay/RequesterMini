@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using RequesterMini.Utils;
+using Templating;
 
 namespace RequesterMini.ViewModels;
 
@@ -81,6 +82,82 @@ public class OldRequestsWindowViewModel : ViewModelBase
 
     internal ReactiveCommand<OldRequestDto, Unit> SaveHistoryToCollectionCommand { get; }
 
+    private static readonly string EnvironmentsPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "RequesterMini",
+        "environments.json");
+
+    private readonly JsonFileStore.JsonFileStore<EnvironmentState> _environmentStore = new(
+        EnvironmentsPath, SourceGenerationContext.Default.EnvironmentState);
+
+    public ObservableCollection<EnvironmentItem> Environments { get; } = [];
+
+    internal string NewEnvironmentName
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "";
+
+    internal EnvironmentItem? ActiveEnvironment
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    internal ReactiveCommand<Unit, Unit> AddEnvironmentCommand { get; }
+
+    internal ReactiveCommand<EnvironmentItem, Unit> RemoveEnvironmentCommand { get; }
+
+    internal ReactiveCommand<EnvironmentItem, Unit> ActivateEnvironmentCommand { get; }
+
+    internal ReactiveCommand<EnvironmentItem, Unit> AddVariableCommand { get; }
+
+    private void SaveEnvironments()
+    {
+        _environmentStore.Save(new EnvironmentState(
+            Environments.Select(e => e.ToDto()).ToList(),
+            ActiveEnvironment?.Name ?? ""));
+    }
+
+    // The main window resolves {{placeholders}} at send time, so it needs the active set. Sent as
+    // a VariableEnvironment rather than a bare map so the name travels with it.
+    private void BroadcastActiveEnvironment()
+    {
+        var dto = ActiveEnvironment?.ToDto() ?? new VariableEnvironment("", []);
+
+        MessageBus.Current.SendMessage(
+            JsonSerializer.Serialize(dto, SourceGenerationContext.Default.VariableEnvironment),
+            Constants.MessageBusConstants.ActiveEnvironmentChanged);
+    }
+
+    private void OnEnvironmentEdited()
+    {
+        SaveEnvironments();
+        BroadcastActiveEnvironment();
+    }
+
+    private void RemoveVariable(EnvironmentItem owner, VariableItem variable)
+    {
+        owner.Variables.Remove(variable);
+        OnEnvironmentEdited();
+    }
+
+    private void AttachVariable(EnvironmentItem owner, VariableItem variable)
+    {
+        variable.OnRemove = item => RemoveVariable(owner, item);
+
+        // Editing a row does not raise CollectionChanged, so each row is watched individually.
+        variable.PropertyChanged += (_, _) => OnEnvironmentEdited();
+    }
+
+    private void MarkActiveEnvironment()
+    {
+        foreach (var environment in Environments)
+        {
+            environment.IsActive = environment == ActiveEnvironment;
+        }
+    }
+
     private void SaveCollections() => _collectionStore.Save(Collections.Select(c => c.ToDto()).ToList());
 
     private void AddToCollection(OldRequestDto dto)
@@ -129,6 +206,72 @@ public class OldRequestsWindowViewModel : ViewModelBase
                 Collections.Add(new CollectionItem(c.Name, c.Requests));
             }
         }
+
+        var savedEnvironments = _environmentStore.Load();
+        if (savedEnvironments is not null)
+        {
+            foreach (var e in savedEnvironments.Environments)
+            {
+                var item = new EnvironmentItem(e.Name, e.Variables);
+                foreach (var variable in item.Variables)
+                {
+                    AttachVariable(item, variable);
+                }
+
+                Environments.Add(item);
+            }
+
+            ActiveEnvironment = Environments.FirstOrDefault(
+                e => string.Equals(e.Name, savedEnvironments.ActiveName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        MarkActiveEnvironment();
+
+        AddEnvironmentCommand = ReactiveCommand.Create(() =>
+        {
+            var name = NewEnvironmentName.Trim();
+            if (name.Length == 0 || Environments.Any(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase)))
+            {
+                return;
+            }
+
+            var environment = new EnvironmentItem(name);
+            Environments.Add(environment);
+
+            // The first one becomes active: creating an environment and seeing nothing resolve
+            // would just be a second step to forget.
+            ActiveEnvironment ??= environment;
+
+            NewEnvironmentName = "";
+            MarkActiveEnvironment();
+            OnEnvironmentEdited();
+        });
+
+        RemoveEnvironmentCommand = ReactiveCommand.Create<EnvironmentItem>(environment =>
+        {
+            Environments.Remove(environment);
+            if (ActiveEnvironment == environment)
+            {
+                ActiveEnvironment = Environments.FirstOrDefault();
+            }
+
+            MarkActiveEnvironment();
+            OnEnvironmentEdited();
+        });
+
+        ActivateEnvironmentCommand = ReactiveCommand.Create<EnvironmentItem>(environment =>
+        {
+            ActiveEnvironment = environment;
+            MarkActiveEnvironment();
+            OnEnvironmentEdited();
+        });
+
+        AddVariableCommand = ReactiveCommand.Create<EnvironmentItem>(environment =>
+        {
+            var variable = new VariableItem();
+            AttachVariable(environment, variable);
+            environment.Variables.Add(variable);
+        });
 
         AddCollectionCommand = ReactiveCommand.Create(() =>
         {
@@ -200,5 +343,9 @@ public class OldRequestsWindowViewModel : ViewModelBase
                 _store.Save(OldRequests.ToList());
             }
         });
+
+        // This control is built as part of the main window, so the main ViewModel is already
+        // listening — it needs the restored selection before the first request goes out.
+        BroadcastActiveEnvironment();
     }
 }

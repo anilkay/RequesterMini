@@ -58,12 +58,13 @@
 
     private async Task SaveToNewAsync()
     {
-        var parameters = new DialogParameters<NewCollectionDialog>
+        var parameters = new DialogParameters<NameDialog>
         {
             { x => x.ExistingNames, _collections.Select(c => c.Name).ToList() },
+            { x => x.Label, "Collection name" },
         };
 
-        var dialog = await DialogService.ShowAsync<NewCollectionDialog>("New collection", parameters);
+        var dialog = await DialogService.ShowAsync<NameDialog>("New collection", parameters);
         var result = await dialog.Result;
 
         if (result is { Canceled: false, Data: string name })

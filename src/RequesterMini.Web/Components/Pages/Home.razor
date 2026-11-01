@@ -42,6 +42,17 @@
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mt-2" />
     }
 
+    @{
+        var unresolved = Workspace.UnresolvedVariables();
+    }
+    @if (unresolved.Count > 0)
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Outlined" Class="mt-2">
+            Not defined in the active environment, and will be sent as written:
+            @string.Join(", ", unresolved.Select(name => $"{{{{{name}}}}}"))
+        </MudAlert>
+    }
+
     <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mt-3 flex-wrap">
         <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Terminal"
                    OnClick="ExportCurlAsync">

@@ -50,6 +50,7 @@
     <ProjectReference Include="..\JsonFileStore\JsonFileStore.csproj" />
     <ProjectReference Include="..\BrunoImporter\BrunoImporter.csproj" />
     <ProjectReference Include="..\SyntaxHighlighter\SyntaxHighlighter.csproj" />
+    <ProjectReference Include="..\Templating\Templating.csproj" />
     <ProjectReference Include="..\UrlQuery\UrlQuery.csproj" />
     <ProjectReference Include="..\HttpAuth\HttpAuth.csproj" />
     <ProjectReference Include="..\HttpRequesting\HttpRequesting.csproj" />

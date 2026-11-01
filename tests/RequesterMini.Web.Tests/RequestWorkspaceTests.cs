@@ -19,8 +19,14 @@ public class RequestWorkspaceTests : IDisposable
     private RequestHistoryService NewHistory() =>
         new(Path.Combine(_directory, "history.json"));
 
+    private EnvironmentService NewEnvironments() =>
+        new(Path.Combine(_directory, $"environments-{Guid.NewGuid()}.json"));
+
     private RequestWorkspace NewWorkspace(RequestHistoryService history) =>
-        new(new StubClientFactory(_handler), history);
+        new(new StubClientFactory(_handler), history, NewEnvironments());
+
+    private RequestWorkspace NewWorkspace(RequestHistoryService history, EnvironmentService environments) =>
+        new(new StubClientFactory(_handler), history, environments);
 
     [Fact]
     public void Constructor_SeedsQueryParamsFromStartUrl()
@@ -291,7 +297,8 @@ public class RequestWorkspaceTests : IDisposable
         var history = NewHistory();
         var workspace = new RequestWorkspace(
             new StubClientFactory(new RecordingHandler { Throw = new HttpRequestException("no route") }),
-            history);
+            history,
+            NewEnvironments());
         workspace.Url = "https://example.test/api";
 
         await workspace.SendAsync();
@@ -299,6 +306,118 @@ public class RequestWorkspaceTests : IDisposable
         Assert.True(workspace.Response!.IsFailure);
         Assert.Equal("Error", workspace.Response.StatusText);
         Assert.Contains("no route", workspace.Response.Body);
+    }
+
+    [Fact]
+    public async Task SendAsync_Placeholders_AreResolvedFromTheActiveEnvironment()
+    {
+        var environments = NewEnvironments();
+        environments.Create("dev");
+        environments.SetVariable("dev", "baseUrl", "https://api.test");
+        environments.SetVariable("dev", "token", "abc123");
+
+        var workspace = NewWorkspace(NewHistory(), environments);
+        workspace.Url = "{{baseUrl}}/posts/1";
+        workspace.AuthType = "Bearer";
+        workspace.AuthToken = "{{token}}";
+
+        await workspace.SendAsync();
+
+        Assert.Equal("https://api.test/posts/1", _handler.LastRequest!.RequestUri!.ToString());
+        Assert.Equal("Bearer abc123", _handler.LastRequest.Headers.GetValues("Authorization").Single());
+    }
+
+    [Fact]
+    public async Task SendAsync_Placeholders_AreResolvedInHeadersAndBody()
+    {
+        var environments = NewEnvironments();
+        environments.Create("dev");
+        environments.SetVariable("dev", "tenant", "acme");
+
+        var workspace = NewWorkspace(NewHistory(), environments);
+        workspace.Url = "https://example.test/api";
+        workspace.Method = "POST";
+        workspace.Body = "{\"tenant\":\"{{tenant}}\"}";
+        workspace.AddHeader();
+        workspace.Headers[0].Key = "X-Tenant";
+        workspace.Headers[0].Value = "{{tenant}}";
+
+        await workspace.SendAsync();
+
+        Assert.Equal("acme", _handler.LastRequest!.Headers.GetValues("X-Tenant").Single());
+        Assert.Equal("{\"tenant\":\"acme\"}", _handler.LastRequestBody);
+    }
+
+    [Fact]
+    public async Task SendAsync_History_KeepsThePlaceholderRatherThanTheResolvedValue()
+    {
+        var environments = NewEnvironments();
+        environments.Create("dev");
+        environments.SetVariable("dev", "baseUrl", "https://api.test");
+
+        var history = NewHistory();
+        var workspace = NewWorkspace(history, environments);
+        workspace.Url = "{{baseUrl}}/posts";
+
+        await workspace.SendAsync();
+
+        Assert.Equal("{{baseUrl}}/posts", history.Snapshot().Single().Url);
+    }
+
+    [Fact]
+    public async Task SendAsync_NoActiveEnvironment_SendsThePlaceholderAsWritten()
+    {
+        var workspace = NewWorkspace(NewHistory());
+        workspace.Url = "https://example.test/{{missing}}";
+
+        await workspace.SendAsync();
+
+        Assert.Equal("https://example.test/{{missing}}", _handler.LastRequest!.RequestUri!.ToString());
+    }
+
+    [Fact]
+    public void BuildCurl_ResolvesPlaceholders()
+    {
+        var environments = NewEnvironments();
+        environments.Create("dev");
+        environments.SetVariable("dev", "baseUrl", "https://api.test");
+
+        var workspace = NewWorkspace(NewHistory(), environments);
+        workspace.Url = "{{baseUrl}}/posts";
+
+        var curl = workspace.BuildCurl();
+
+        Assert.Contains("https://api.test/posts", curl);
+        Assert.DoesNotContain("{{baseUrl}}", curl);
+    }
+
+    [Fact]
+    public void UnresolvedVariables_ReportsNamesTheEnvironmentDoesNotDefine()
+    {
+        var environments = NewEnvironments();
+        environments.Create("dev");
+        environments.SetVariable("dev", "known", "x");
+
+        var workspace = NewWorkspace(NewHistory(), environments);
+        workspace.Url = "{{known}}/{{missing}}";
+        workspace.AddHeader();
+        workspace.Headers[0].Key = "X-Other";
+        workspace.Headers[0].Value = "{{alsoMissing}}";
+
+        Assert.Equal(["missing", "alsoMissing"], workspace.UnresolvedVariables());
+    }
+
+    [Fact]
+    public void UnresolvedVariables_EverythingDefined_IsEmpty()
+    {
+        var environments = NewEnvironments();
+        environments.Create("dev");
+        environments.SetVariable("dev", "baseUrl", "https://api.test");
+
+        var workspace = NewWorkspace(NewHistory(), environments);
+        workspace.Url = "{{baseUrl}}/posts";
+
+        Assert.Empty(workspace.UnresolvedVariables());
     }
 
     [Fact]
@@ -352,18 +471,22 @@ public class RequestWorkspaceTests : IDisposable
     private sealed class RecordingHandler : HttpMessageHandler
     {
         public HttpRequestMessage? LastRequest { get; private set; }
+        public string? LastRequestBody { get; private set; }
         public Exception? Throw { get; init; }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             LastRequest = request;
+            LastRequestBody = request.Content is null
+                ? null
+                : await request.Content.ReadAsStringAsync(cancellationToken);
 
             if (Throw is not null) throw Throw;
 
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json"),
-            });
+            };
         }
     }
 }

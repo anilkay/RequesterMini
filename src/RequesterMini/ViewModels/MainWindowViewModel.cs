@@ -20,6 +20,7 @@ using HttpAuth;
 using OneOf;
 using System.Diagnostics.CodeAnalysis;
 using System.Reactive.Linq;
+using Templating;
 using UrlQuery;
 
 // Imported by alias rather than with a plain using: HttpRequesting also defines RequestSuccess and
@@ -37,6 +38,9 @@ public class MainWindowViewModel : ViewModelBase
     // Re-entrancy guard: Url and QueryParams mirror each other, so whichever side is being written
     // suppresses the sync back in the other direction.
     private bool _syncingQueryParams;
+
+    // The active environment's variables, kept current from the environments tab over MessageBus.
+    private Dictionary<string, string> _variables = [];
 
     [RequiresUnreferencedCode("This constructor uses reflection.")]
     public MainWindowViewModel(HttpClient httpClient) : this()
@@ -122,6 +126,13 @@ public class MainWindowViewModel : ViewModelBase
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
+
+    /// <summary>Shown beside the URL so the active environment is visible while composing.</summary>
+    internal string ActiveEnvironmentName
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "No environment";
 
     internal string ProxyUrl
     {
@@ -272,20 +283,21 @@ public class MainWindowViewModel : ViewModelBase
 
         ExportCurlCommand = ReactiveCommand.Create(() =>
         {
+            // Resolved, not templated: a curl command still carrying {{baseUrl}} would not run.
             var builder = new CurlCommandBuilder()
                 .SetMethod(SelectedHttpMethod)
-                .SetUrl(Url);
+                .SetUrl(Resolve(Url));
 
             if (HasBasicCredentials)
             {
-                builder.SetBasicAuth(AuthUsername, AuthPassword);
+                builder.SetBasicAuth(Resolve(AuthUsername), Resolve(AuthPassword));
             }
 
             foreach (var header in Headers)
             {
                 if (header.IsEnabled && !string.IsNullOrWhiteSpace(header.Key))
                 {
-                    builder.AddHeader(header.Key, header.Value);
+                    builder.AddHeader(Resolve(header.Key), Resolve(header.Value));
                 }
             }
 
@@ -293,13 +305,14 @@ public class MainWindowViewModel : ViewModelBase
             // typed by hand — the same precedence the sent request uses.
             if (HasBearerToken)
             {
-                builder.AddHeader(BearerAuth.HeaderName, BearerAuth.BuildHeaderValue(AuthToken));
+                builder.AddHeader(BearerAuth.HeaderName, BearerAuth.BuildHeaderValue(Resolve(AuthToken)));
             }
 
-            if (!string.IsNullOrEmpty(Body)
+            var curlBody = Resolve(Body);
+            if (!string.IsNullOrEmpty(curlBody)
                 && Enum.TryParse<BodyType>(SelectedBodyType, ignoreCase: true, out var bodyType))
             {
-                builder.SetBody(Body, bodyType);
+                builder.SetBody(curlBody, bodyType);
             }
 
             var curl = builder.Build();
@@ -386,7 +399,8 @@ public class MainWindowViewModel : ViewModelBase
             Logger.Info($"Sending {SelectedHttpMethod} request to {Url}");
             HttpClient client = _httpClient;
             HttpClient? proxyClient = null;
-            var proxySettings = new ProxySettings(ProxyUrl, ProxyUsername, ProxyPassword);
+            var proxySettings = new ProxySettings(
+                Resolve(ProxyUrl), Resolve(ProxyUsername), Resolve(ProxyPassword));
             if (proxySettings.IsEnabled)
             {
                 var proxyResult = ProxyClientFactory.Create(proxySettings);
@@ -403,7 +417,11 @@ public class MainWindowViewModel : ViewModelBase
                 client = proxyClient;
             }
 
-            MakeRequest makeRequest = new MakeRequest(client, SelectedHttpMethod, Body, SelectedBodyType, Url, BuildRequestHeaders(headers));
+            // Placeholders are resolved on the way out only; history keeps the template form, so a
+            // reloaded request still follows whichever environment is active then.
+            MakeRequest makeRequest = new MakeRequest(
+                client, SelectedHttpMethod, Resolve(Body), SelectedBodyType, Resolve(Url),
+                BuildRequestHeaders(ResolveAll(headers)));
             OneOf<RequestSuccess, RequestFailure> result = await makeRequest.Execute(_cts.Token);
             proxyClient?.Dispose();
 
@@ -442,6 +460,15 @@ public class MainWindowViewModel : ViewModelBase
 
         });
 
+        MessageBus.Current.Listen<string>(MessageBusConstants.ActiveEnvironmentChanged).Subscribe(value =>
+        {
+            if (value is null) return;
+
+            var environment = JsonSerializer.Deserialize(value, SourceGenerationContext.Default.VariableEnvironment);
+            _variables = environment?.Variables ?? [];
+            ActiveEnvironmentName = string.IsNullOrEmpty(environment?.Name) ? "No environment" : environment.Name;
+        });
+
         this.WhenAnyValue(x => x.SelectedAuthType)
             .Subscribe(_ =>
             {
@@ -459,6 +486,19 @@ public class MainWindowViewModel : ViewModelBase
             .Throttle(TimeSpan.FromMilliseconds(400))
             .ObserveOn(RxSchedulers.MainThreadScheduler)
             .Subscribe(_ => ValidateBody());
+    }
+
+    private string Resolve(string value) => VariableInterpolator.Resolve(value, _variables);
+
+    private Dictionary<string, string> ResolveAll(Dictionary<string, string> headers)
+    {
+        var resolved = new Dictionary<string, string>();
+        foreach (var header in headers)
+        {
+            resolved[Resolve(header.Key)] = Resolve(header.Value);
+        }
+
+        return resolved;
     }
 
     private AuthScheme CurrentAuthScheme =>
@@ -480,7 +520,7 @@ public class MainWindowViewModel : ViewModelBase
         {
             return new Dictionary<string, string>(headers)
             {
-                [BasicAuth.HeaderName] = BasicAuth.BuildHeaderValue(AuthUsername, AuthPassword),
+                [BasicAuth.HeaderName] = BasicAuth.BuildHeaderValue(Resolve(AuthUsername), Resolve(AuthPassword)),
             };
         }
 
@@ -488,7 +528,7 @@ public class MainWindowViewModel : ViewModelBase
         {
             return new Dictionary<string, string>(headers)
             {
-                [BearerAuth.HeaderName] = BearerAuth.BuildHeaderValue(AuthToken),
+                [BearerAuth.HeaderName] = BearerAuth.BuildHeaderValue(Resolve(AuthToken)),
             };
         }
 

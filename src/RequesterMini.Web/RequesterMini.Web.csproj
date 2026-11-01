@@ -19,6 +19,7 @@
     <ProjectReference Include="..\HttpRequesting\HttpRequesting.csproj" />
     <ProjectReference Include="..\JsonFileStore\JsonFileStore.csproj" />
     <ProjectReference Include="..\SyntaxHighlighter\SyntaxHighlighter.csproj" />
+    <ProjectReference Include="..\Templating\Templating.csproj" />
     <ProjectReference Include="..\UrlQuery\UrlQuery.csproj" />
   </ItemGroup>
 

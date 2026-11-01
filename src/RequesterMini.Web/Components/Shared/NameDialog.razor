@@ -1,8 +1,8 @@
-@* Asks for a collection name. Returns the trimmed name, or a cancelled result. *@
+@* Asks for a name that must not clash with one already in use. Returns the trimmed name. *@
 
 <MudDialog>
     <DialogContent>
-        <MudTextField T="string" @bind-Value="_name" Label="Collection name" Variant="Variant.Outlined"
+        <MudTextField T="string" @bind-Value="_name" Label="@Label" Variant="Variant.Outlined"
                       Immediate="true" AutoFocus="true" OnKeyUp="OnKeyUp"
                       Error="@(_error is not null)" ErrorText="@_error" />
     </DialogContent>
@@ -21,6 +21,8 @@
     /// <summary>Names already taken, so the clash is reported here rather than silently ignored.</summary>
     [Parameter] public IReadOnlyCollection<string> ExistingNames { get; set; } = [];
 
+    [Parameter] public string Label { get; set; } = "Name";
+
     private string _name = "";
     private string? _error;
 
@@ -31,7 +33,7 @@
 
         if (ExistingNames.Any(n => string.Equals(n, trimmed, StringComparison.OrdinalIgnoreCase)))
         {
-            _error = "A collection with that name already exists.";
+            _error = "That name is already in use.";
             return;
         }
 

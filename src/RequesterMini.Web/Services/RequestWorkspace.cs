@@ -5,6 +5,7 @@ using HttpAuth;
 using HttpRequesting;
 using RequesterMini.Web.Constants;
 using RequesterMini.Web.Models;
+using Templating;
 using UrlQuery;
 
 namespace RequesterMini.Web.Services;
@@ -17,6 +18,7 @@ public sealed class RequestWorkspace : IDisposable
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly RequestHistoryService _history;
+    private readonly EnvironmentService _environments;
 
     private CancellationTokenSource? _cts;
 
@@ -26,12 +28,17 @@ public sealed class RequestWorkspace : IDisposable
     private string _body = "";
     private string _bodyType = HttpConstants.DefaultBodyType;
 
-    public RequestWorkspace(IHttpClientFactory httpClientFactory, RequestHistoryService history)
+    public RequestWorkspace(
+        IHttpClientFactory httpClientFactory,
+        RequestHistoryService history,
+        EnvironmentService environments)
     {
         ArgumentNullException.ThrowIfNull(httpClientFactory);
         ArgumentNullException.ThrowIfNull(history);
+        ArgumentNullException.ThrowIfNull(environments);
         _httpClientFactory = httpClientFactory;
         _history = history;
+        _environments = environments;
         SyncParamsFromUrl();
     }
 
@@ -127,7 +134,12 @@ public sealed class RequestWorkspace : IDisposable
         _cts?.Dispose();
         _cts = new CancellationTokenSource();
 
-        var proxySettings = new ProxySettings(ProxyUrl, ProxyUsername, ProxyPassword);
+        // Placeholders are resolved on the way out only. History keeps the template form, so a
+        // reloaded request still follows whichever environment is active then.
+        var variables = _environments.ActiveVariables();
+
+        var proxySettings = new ProxySettings(
+            Resolve(ProxyUrl, variables), Resolve(ProxyUsername, variables), Resolve(ProxyPassword, variables));
         HttpClient? proxyClient = null;
 
         if (proxySettings.IsEnabled)
@@ -154,7 +166,12 @@ public sealed class RequestWorkspace : IDisposable
 
             var client = proxyClient ?? _httpClientFactory.CreateClient(HttpConstants.RequestClientName);
             var runner = new HttpRequestRunner(client);
-            var spec = new HttpRequestSpec(Method, Url, Body, BodyType, WithAuthHeader(headers));
+            var spec = new HttpRequestSpec(
+                Method,
+                Resolve(Url, variables),
+                Resolve(Body, variables),
+                BodyType,
+                WithAuthHeader(ResolveAll(headers, variables), variables));
             var result = await runner.SendAsync(spec, _cts.Token);
 
             Response = result.Match(
@@ -213,16 +230,19 @@ public sealed class RequestWorkspace : IDisposable
 
     public string BuildCurl()
     {
+        // Resolved, not templated: a curl command still carrying {{baseUrl}} would not run.
+        var variables = _environments.ActiveVariables();
+
         var builder = new CurlCommandBuilder()
             .SetMethod(Method)
-            .SetUrl(Url);
+            .SetUrl(Resolve(Url, variables));
 
         if (HasBasicCredentials)
         {
-            builder.SetBasicAuth(AuthUsername, AuthPassword);
+            builder.SetBasicAuth(Resolve(AuthUsername, variables), Resolve(AuthPassword, variables));
         }
 
-        foreach (var (key, value) in CollectHeaders())
+        foreach (var (key, value) in ResolveAll(CollectHeaders(), variables))
         {
             builder.AddHeader(key, value);
         }
@@ -231,15 +251,61 @@ public sealed class RequestWorkspace : IDisposable
         // hand — the same precedence the sent request uses. Bearer has no curl flag of its own.
         if (HasBearerToken)
         {
-            builder.AddHeader(BearerAuth.HeaderName, BearerAuth.BuildHeaderValue(AuthToken));
+            builder.AddHeader(BearerAuth.HeaderName, BearerAuth.BuildHeaderValue(Resolve(AuthToken, variables)));
         }
 
-        if (!string.IsNullOrEmpty(Body) && Enum.TryParse<CurlExporter.BodyType>(_bodyType, ignoreCase: true, out var parsed))
+        var body = Resolve(Body, variables);
+        if (!string.IsNullOrEmpty(body) && Enum.TryParse<CurlExporter.BodyType>(_bodyType, ignoreCase: true, out var parsed))
         {
-            builder.SetBody(Body, parsed);
+            builder.SetBody(body, parsed);
         }
 
         return builder.Build();
+    }
+
+    /// <summary>
+    /// Placeholder names used by this request that the active environment does not define, so the
+    /// UI can warn before the request goes out with <c>{{baseUrl}}</c> still in the URL.
+    /// </summary>
+    public IReadOnlyList<string> UnresolvedVariables()
+    {
+        var variables = _environments.ActiveVariables();
+        var missing = new List<string>();
+
+        void Scan(string? text)
+        {
+            foreach (var name in VariableInterpolator.FindUnresolved(text, variables))
+            {
+                if (!missing.Contains(name)) missing.Add(name);
+            }
+        }
+
+        Scan(Url);
+        Scan(Body);
+        Scan(ProxyUrl);
+        foreach (var (key, value) in CollectHeaders())
+        {
+            Scan(key);
+            Scan(value);
+        }
+
+        return missing;
+    }
+
+    private static string Resolve(string value, IReadOnlyDictionary<string, string> variables) =>
+        VariableInterpolator.Resolve(value, variables);
+
+    private static Dictionary<string, string> ResolveAll(
+        Dictionary<string, string> headers,
+        IReadOnlyDictionary<string, string> variables)
+    {
+        var resolved = new Dictionary<string, string>();
+        foreach (var (key, value) in headers)
+        {
+            resolved[Resolve(key, variables)] = Resolve(value, variables);
+        }
+
+        return resolved;
     }
 
     /// <summary>Replaces the current request with one imported from a Bruno file.</summary>
@@ -374,13 +440,16 @@ public sealed class RequestWorkspace : IDisposable
     /// dictionary that reaches the history file, so passwords and tokens never hit disk. An auth
     /// selection wins over an Authorization header typed by hand in the Headers tab.
     /// </summary>
-    private Dictionary<string, string> WithAuthHeader(Dictionary<string, string> headers)
+    private Dictionary<string, string> WithAuthHeader(
+        Dictionary<string, string> headers,
+        IReadOnlyDictionary<string, string> variables)
     {
         if (HasBasicCredentials)
         {
             return new Dictionary<string, string>(headers)
             {
-                [BasicAuth.HeaderName] = BasicAuth.BuildHeaderValue(AuthUsername, AuthPassword),
+                [BasicAuth.HeaderName] = BasicAuth.BuildHeaderValue(
+                    Resolve(AuthUsername, variables), Resolve(AuthPassword, variables)),
             };
         }
 
@@ -388,7 +457,7 @@ public sealed class RequestWorkspace : IDisposable
         {
             return new Dictionary<string, string>(headers)
             {
-                [BearerAuth.HeaderName] = BearerAuth.BuildHeaderValue(AuthToken),
+                [BearerAuth.HeaderName] = BearerAuth.BuildHeaderValue(Resolve(AuthToken, variables)),
             };
         }
 

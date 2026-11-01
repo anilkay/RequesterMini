@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using RequesterMini.Web.Models;
+using Templating;
 
 namespace RequesterMini.Web.Serialization;
 
@@ -12,4 +13,6 @@ namespace RequesterMini.Web.Serialization;
 [JsonSerializable(typeof(List<StoredRequest>))]
 [JsonSerializable(typeof(StoredCollection))]
 [JsonSerializable(typeof(List<StoredCollection>))]
+[JsonSerializable(typeof(VariableEnvironment))]
+[JsonSerializable(typeof(EnvironmentState))]
 internal partial class WebSerializerContext : JsonSerializerContext;

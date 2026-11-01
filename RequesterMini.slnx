@@ -18,6 +18,7 @@
     <Project Path="src/UrlQuery/UrlQuery.csproj" />
     <Project Path="src/HttpAuth/HttpAuth.csproj" />
     <Project Path="src/HttpRequesting/HttpRequesting.csproj" />
+    <Project Path="src/Templating/Templating.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/AppLogger.Tests/AppLogger.Tests.csproj" />
@@ -28,5 +29,6 @@
     <Project Path="tests/HttpAuth.Tests/HttpAuth.Tests.csproj" />
     <Project Path="tests/HttpRequesting.Tests/HttpRequesting.Tests.csproj" />
     <Project Path="tests/RequesterMini.Web.Tests/RequesterMini.Web.Tests.csproj" />
+    <Project Path="tests/Templating.Tests/Templating.Tests.csproj" />
   </Folder>
 </Solution>
