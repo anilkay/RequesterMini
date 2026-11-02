@@ -1,11 +1,16 @@
 # Build context is the repository root, not this folder:
 #   docker build -f src/RequesterMini.Web/Dockerfile -t requestermini-web .
-# The web app references seven sibling libraries, so the whole src tree has to be reachable.
+# The web app references sibling libraries, so the whole src tree has to be reachable.
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Project files first: this layer is cached until a csproj changes, so code edits skip the restore.
+#
+# ADDING A LIBRARY MEANS ADDING A LINE HERE. Miss it and restore quietly skips the project
+# ("Skipping project ... because it was not found"), then the build fails with "The type or
+# namespace name 'X' could not be found". Nothing catches that before the release workflow, since
+# the image is only built on a version tag.
 COPY src/RequesterMini.Web/RequesterMini.Web.csproj src/RequesterMini.Web/
 COPY src/AppLogger/AppLogger.csproj src/AppLogger/
 COPY src/BrunoImporter/BrunoImporter.csproj src/BrunoImporter/
@@ -14,18 +19,13 @@ COPY src/HttpAuth/HttpAuth.csproj src/HttpAuth/
 COPY src/HttpRequesting/HttpRequesting.csproj src/HttpRequesting/
 COPY src/JsonFileStore/JsonFileStore.csproj src/JsonFileStore/
 COPY src/SyntaxHighlighter/SyntaxHighlighter.csproj src/SyntaxHighlighter/
+COPY src/Templating/Templating.csproj src/Templating/
 COPY src/UrlQuery/UrlQuery.csproj src/UrlQuery/
 RUN dotnet restore src/RequesterMini.Web/RequesterMini.Web.csproj
 
-COPY src/RequesterMini.Web/ src/RequesterMini.Web/
-COPY src/AppLogger/ src/AppLogger/
-COPY src/BrunoImporter/ src/BrunoImporter/
-COPY src/CurlExporter/ src/CurlExporter/
-COPY src/HttpAuth/ src/HttpAuth/
-COPY src/HttpRequesting/ src/HttpRequesting/
-COPY src/JsonFileStore/ src/JsonFileStore/
-COPY src/SyntaxHighlighter/ src/SyntaxHighlighter/
-COPY src/UrlQuery/ src/UrlQuery/
+# The sources go in as one copy rather than project by project, so this half at least cannot fall
+# behind. It pulls in the desktop app's sources too, which are never restored or built here.
+COPY src/ src/
 
 RUN dotnet publish src/RequesterMini.Web/RequesterMini.Web.csproj \
     -c Release -o /app/publish
