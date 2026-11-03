@@ -72,6 +72,10 @@ The following native files must be distributed **alongside** the exe:
 
 ## Releases
 
+Every push to `main` runs the `CI` workflow (`.github/workflows/ci.yml`): the full test suite, plus
+a build of the web container image that is discarded rather than pushed. That is what keeps a
+tagged release from being the first place a broken Dockerfile shows up.
+
 Push a version tag and the `Release` workflow (`.github/workflows/release.yml`) does the rest: it
 runs the full test suite, publishes the Avalonia desktop app as self-contained zips, pushes the web
 image to GHCR, and creates a GitHub Release with the zips attached.
