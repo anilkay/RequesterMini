@@ -8,6 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- NameRules is internal: it is a rule shared by two services, not API for the pages. -->
+    <InternalsVisibleTo Include="RequesterMini.Web.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentResults" Version="4.0.0" />
     <PackageReference Include="MudBlazor" Version="9.7.0" />
   </ItemGroup>
 

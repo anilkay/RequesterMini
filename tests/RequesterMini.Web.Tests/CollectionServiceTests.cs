@@ -31,7 +31,7 @@ public class CollectionServiceTests : IDisposable
     {
         var service = new CollectionService(CollectionsPath);
 
-        Assert.True(service.Create("Api"));
+        Assert.True(service.Create("Api").IsSuccess);
 
         var collection = service.Snapshot().Single();
         Assert.Equal("Api", collection.Name);
@@ -45,7 +45,7 @@ public class CollectionServiceTests : IDisposable
     {
         var service = new CollectionService(CollectionsPath);
 
-        Assert.False(service.Create(name));
+        Assert.True(service.Create(name).IsFailed);
         Assert.Empty(service.Snapshot());
     }
 
@@ -65,7 +65,7 @@ public class CollectionServiceTests : IDisposable
         var service = new CollectionService(CollectionsPath);
         service.Create("Api");
 
-        Assert.False(service.Create("api"));
+        Assert.True(service.Create("api").IsFailed);
         Assert.Single(service.Snapshot());
     }
 
@@ -205,6 +205,39 @@ public class CollectionServiceTests : IDisposable
         var service = new CollectionService(CollectionsPath);
 
         Assert.Throws<ArgumentNullException>(() => service.AddRequest("Api", null!));
+    }
+
+    [Fact]
+    public void Create_Duplicate_ReportsWhichNameClashed()
+    {
+        var service = new CollectionService(CollectionsPath);
+        service.Create("Api");
+
+        var result = service.Create("api");
+
+        Assert.True(result.IsFailed);
+        Assert.Contains("\"api\"", result.Errors.Single().Message);
+        Assert.Single(service.Snapshot());
+    }
+
+    [Fact]
+    public void AddRequest_BlankCollectionName_ReportsWhyInsteadOfSilentlyIgnoring()
+    {
+        var service = new CollectionService(CollectionsPath);
+
+        var result = service.AddRequest("  ", Request());
+
+        Assert.True(result.IsFailed);
+        Assert.Contains("cannot be blank", result.Errors.Single().Message);
+        Assert.Empty(service.Snapshot());
+    }
+
+    [Fact]
+    public void AddRequest_Valid_Succeeds()
+    {
+        var service = new CollectionService(CollectionsPath);
+
+        Assert.True(service.AddRequest("Api", Request()).IsSuccess);
     }
 
     [Fact]

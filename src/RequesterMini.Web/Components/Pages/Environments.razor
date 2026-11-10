@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject EnvironmentService EnvironmentStore
 @inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
 <PageTitle>RequesterMini — Environments</PageTitle>
 
@@ -149,38 +150,41 @@ else
 
     private void Rename(string environmentName, string oldKey, string newKey)
     {
-        if (!EnvironmentStore.RenameVariable(environmentName, oldKey, newKey))
-        {
-            // Blank or already used: put the field back to what the store still holds.
-            Refresh();
-            StateHasChanged();
-        }
+        var result = EnvironmentStore.RenameVariable(environmentName, oldKey, newKey);
+        if (result.IsSuccess) return;
+
+        // Say why, then put the field back to what the store still holds. Before, the field just
+        // snapped back and the user was left guessing.
+        Report(result);
+        Refresh();
+        StateHasChanged();
     }
 
     private void AddVariable(string environmentName)
     {
-        if (string.IsNullOrWhiteSpace(_newKey)) return;
+        var result = EnvironmentStore.SetVariable(environmentName, _newKey, _newValue);
+        if (result.IsFailed)
+        {
+            Report(result);
+            return;
+        }
 
-        EnvironmentStore.SetVariable(environmentName, _newKey, _newValue);
         _newKey = "";
         _newValue = "";
     }
+
+    private void Report(ResultBase result) =>
+        Snackbar.Add(string.Join(" ", result.Errors.Select(e => e.Message)), Severity.Error);
 
     private async Task CreateAsync()
     {
         var parameters = new DialogParameters<NameDialog>
         {
-            { x => x.ExistingNames, _environments.Select(e => e.Name).ToList() },
+            { x => x.Commit, EnvironmentStore.Create },
             { x => x.Label, "Environment name" },
         };
 
-        var dialog = await DialogService.ShowAsync<NameDialog>("New environment", parameters);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false, Data: string name })
-        {
-            EnvironmentStore.Create(name);
-        }
+        await DialogService.ShowAsync<NameDialog>("New environment", parameters);
     }
 
     private async Task DeleteAsync(VariableEnvironment environment)

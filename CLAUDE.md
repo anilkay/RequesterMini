@@ -83,6 +83,11 @@ The app publishes trimmed + single-file, and reflection-based JSON is disabled (
 - **`Interaction<TIn,TOut>`** for platform services the ViewModel can't do itself (clipboard, file-open dialog). Handlers are registered in the View's code-behind `DataContextChanged`, never in the ViewModel.
 - **`MessageBus.Current`** for cross-ViewModel/cross-window events, keyed by the string constants in `Constants/MessageBusConstants.cs` (`newjson`, `newrequest`, `loadrequest`). This is how the main window, the old-requests window, and the JSON visualizer window talk to each other without direct references.
 
+### Result types: OneOf vs FluentResults
+Two idioms, split by who the failure is *for*. `OneOf<TSuccess, TFailure>` carries a **typed** failure the caller branches on (the request path). FluentResults' `Result` carries a **message for the user** (the web app's `CollectionService` / `EnvironmentService`, which refuse blank or taken names and say why). Argument guards still throw and idempotent removals stay `void`. The full rule, with the reasoning, is under "Result Types" in `.github/copilot-instructions.md`.
+
+This was a deliberate partial migration, not an unfinished one: FluentResults was **not** pushed into the request path, because replacing `OneOf`'s typed failure with `List<IError>` there would lose type safety for no gain. Don't "finish" it.
+
 ### Persistence
 `JsonFileStore` is a generic `JsonStore<T>` over an `IStoreBackend` (`FileBackend` for disk, `MemoryBackend` for tests). It is **degradation-tolerant**: if a load or save throws, it flips `IsPersistenceAvailable` to false and silently continues in memory-only mode rather than crashing the app. History, collections and environments are all persisted through this.
 

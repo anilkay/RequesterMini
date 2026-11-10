@@ -1,4 +1,5 @@
 using AppLogger;
+using FluentResults;
 using JsonFileStore;
 using RequesterMini.Web.Models;
 using RequesterMini.Web.Serialization;
@@ -9,8 +10,13 @@ namespace RequesterMini.Web.Services;
 /// Named collections of saved requests, backed by one file. Registered as a singleton for the same
 /// reason as <see cref="RequestHistoryService"/>: one file, so one writer.
 /// <para>
-/// Collection names are unique case-insensitively — two collections called "Api" and "api" would be
-/// indistinguishable in the UI — and they double as the identity used by every mutation here.
+/// Collection names are unique case-insensitively — see <see cref="NameRules"/> — and they double
+/// as the identity used by every mutation here.
+/// </para>
+/// <para>
+/// A method returns <see cref="Result"/> when the caller has something to tell the user: a name was
+/// blank or taken. Removals stay <c>void</c> on purpose — deleting something that is already gone
+/// is the outcome the caller wanted, not a failure worth reporting.
 /// </para>
 /// </summary>
 public sealed class CollectionService
@@ -46,23 +52,24 @@ public sealed class CollectionService
         }
     }
 
-    /// <summary>Creates an empty collection. Returns false when the name is blank or already taken.</summary>
-    public bool Create(string name)
+    /// <summary>Creates an empty collection, or reports why the name was rejected.</summary>
+    public Result Create(string name)
     {
-        var trimmed = (name ?? "").Trim();
-        if (trimmed.Length == 0) return false;
+        string created;
 
         lock (_gate)
         {
-            if (Find(trimmed) is not null) return false;
+            var validated = NameRules.Validate(name, _collections.Select(c => c.Name), "collection");
+            if (validated.IsFailed) return validated.ToResult();
 
-            _collections.Add(new StoredCollection(trimmed, []));
+            created = validated.Value;
+            _collections.Add(new StoredCollection(created, []));
             Save();
         }
 
-        Logger.Info($"Collection created: {trimmed}");
+        Logger.Info($"Collection created: {created}");
         Changed?.Invoke();
-        return true;
+        return Result.Ok();
     }
 
     public void Delete(string name)
@@ -83,12 +90,12 @@ public sealed class CollectionService
     /// Adds a request to a collection, creating the collection when it does not exist yet. The
     /// response is stripped: a collection holds the request, not the reply it happened to get.
     /// </summary>
-    public void AddRequest(string collectionName, StoredRequest request)
+    public Result AddRequest(string collectionName, StoredRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
 
         var trimmed = (collectionName ?? "").Trim();
-        if (trimmed.Length == 0) return;
+        if (trimmed.Length == 0) return Result.Fail("A collection name cannot be blank.");
 
         var stripped = request with { ResponseStatusCode = "", ResponseBody = "" };
 
@@ -107,6 +114,7 @@ public sealed class CollectionService
 
         Logger.Info($"Request saved to collection {trimmed}: {stripped.Method} {stripped.Url}");
         Changed?.Invoke();
+        return Result.Ok();
     }
 
     /// <summary>Removes the request at <paramref name="index"/>, which is its position in the collection.</summary>

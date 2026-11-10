@@ -127,17 +127,11 @@ else
     {
         var parameters = new DialogParameters<NameDialog>
         {
-            { x => x.ExistingNames, _collections.Select(c => c.Name).ToList() },
+            { x => x.Commit, CollectionStore.Create },
             { x => x.Label, "Collection name" },
         };
 
-        var dialog = await DialogService.ShowAsync<NameDialog>("New collection", parameters);
-        var result = await dialog.Result;
-
-        if (result is { Canceled: false, Data: string name })
-        {
-            CollectionStore.Create(name);
-        }
+        await DialogService.ShowAsync<NameDialog>("New collection", parameters);
     }
 
     private async Task DeleteAsync(StoredCollection collection)

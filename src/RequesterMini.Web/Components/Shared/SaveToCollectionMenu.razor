@@ -52,15 +52,24 @@
 
     private void Save(string collectionName)
     {
-        Collections.AddRequest(collectionName, Request());
+        var result = Collections.AddRequest(collectionName, Request());
+
+        if (result.IsFailed)
+        {
+            Snackbar.Add(string.Join(" ", result.Errors.Select(e => e.Message)), Severity.Error);
+            return;
+        }
+
         Snackbar.Add($"Saved to {collectionName}", Severity.Success);
     }
 
     private async Task SaveToNewAsync()
     {
+        // The dialog does the saving, so a name clash is reported in the field rather than after
+        // the dialog has closed. AddRequest creates the collection when it does not exist yet.
         var parameters = new DialogParameters<NameDialog>
         {
-            { x => x.ExistingNames, _collections.Select(c => c.Name).ToList() },
+            { x => x.Commit, name => Collections.AddRequest(name, Request()) },
             { x => x.Label, "Collection name" },
         };
 
@@ -69,7 +78,7 @@
 
         if (result is { Canceled: false, Data: string name })
         {
-            Save(name);
+            Snackbar.Add($"Saved to {name}", Severity.Success);
         }
     }
 }

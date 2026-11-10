@@ -5,7 +5,8 @@
 - .NET 10 / C# 14 — use `field` keyword, modern APIs, nullable enabled everywhere
 - Avalonia UI 11.3 — Fluent theme, compiled bindings (`AvaloniaUseCompiledBindingsByDefault=true`)
 - ReactiveUI — MVVM, `ReactiveObject`, `ReactiveCommand`, `MessageBus`, `Interaction`
-- OneOf — discriminated union result types (no exceptions for control flow)
+- OneOf — discriminated union result types for typed failures on the request path (no exceptions for control flow)
+- FluentResults — `Result`/`Result<T>` for refusals with a user-facing reason, in the web app's services
 - System.Text.Json — source-generated only; reflection is **disabled** (`JsonSerializerIsReflectionEnabledByDefault=false`)
 - xUnit — testing framework
 
@@ -128,7 +129,12 @@ writer.Flush();
 
 ### Result Types
 
-Use `OneOf<RequestSuccess, RequestFailure>` — never throw for expected failures:
+Never throw for expected failures. Two idioms are in use, and which one applies depends on whether
+the caller needs to branch on **what kind** of failure it was or to tell the **user why**:
+
+**`OneOf<TSuccess, TFailure>`** — the failure is a *typed value* the caller handles. Used on the
+request path (`HttpRequestRunner`, `MakeRequest`, `ProxyClientFactory`), where `RequestFailure` carries
+its own `Exception?` and `ProxyError` is a distinct type:
 
 ```csharp
 return result.Match(
@@ -136,6 +142,27 @@ return result.Match(
     failure => ...
 );
 ```
+
+**`FluentResults` (`Result` / `Result<T>`)** — the failure is a *message for a person*. Used in the web
+app's services (`CollectionService`, `EnvironmentService`) wherever an operation can be refused for a
+reason worth showing, such as a blank or taken name:
+
+```csharp
+var result = EnvironmentStore.RenameVariable(env, oldKey, newKey);
+if (result.IsFailed) Snackbar.Add(string.Join(" ", result.Errors.Select(e => e.Message)), Severity.Error);
+```
+
+Do **not** use either for:
+
+- **Argument guards.** `ArgumentNullException.ThrowIfNull` and friends are contract violations — bugs,
+  not outcomes. Returning a `Result` for a null argument rewards the caller who passed it.
+- **Idempotent removals.** `Delete` of something already gone is the outcome the caller wanted. These
+  stay `void`.
+- **Anything that cannot meaningfully fail.**
+
+A rule that two places must agree on lives in one place and returns a `Result` (see `NameRules`),
+rather than being re-checked by the UI. The dialog that asks for a name used to carry its own copy of
+the uniqueness rule — the copy the user saw, while the store's was the one that counted.
 
 ### Error Handling in Libraries
 

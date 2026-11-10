@@ -31,7 +31,7 @@ public class EnvironmentServiceTests : IDisposable
     {
         var service = new EnvironmentService(EnvironmentsPath);
 
-        Assert.True(service.Create("dev"));
+        Assert.True(service.Create("dev").IsSuccess);
         Assert.Equal("dev", service.ActiveName);
     }
 
@@ -53,7 +53,7 @@ public class EnvironmentServiceTests : IDisposable
     {
         var service = new EnvironmentService(EnvironmentsPath);
 
-        Assert.False(service.Create(name));
+        Assert.True(service.Create(name).IsFailed);
         Assert.Empty(service.Snapshot());
     }
 
@@ -63,7 +63,7 @@ public class EnvironmentServiceTests : IDisposable
         var service = new EnvironmentService(EnvironmentsPath);
         service.Create("dev");
 
-        Assert.False(service.Create("DEV"));
+        Assert.True(service.Create("DEV").IsFailed);
         Assert.Single(service.Snapshot());
     }
 
@@ -169,7 +169,7 @@ public class EnvironmentServiceTests : IDisposable
         service.Create("dev");
         service.SetVariable("dev", "old", "x");
 
-        Assert.True(service.RenameVariable("dev", "old", "new"));
+        Assert.True(service.RenameVariable("dev", "old", "new").IsSuccess);
 
         var variables = service.ActiveVariables();
         Assert.Equal("x", variables["new"]);
@@ -184,7 +184,7 @@ public class EnvironmentServiceTests : IDisposable
         service.SetVariable("dev", "a", "1");
         service.SetVariable("dev", "b", "2");
 
-        Assert.False(service.RenameVariable("dev", "a", "b"));
+        Assert.True(service.RenameVariable("dev", "a", "b").IsFailed);
         Assert.Equal("1", service.ActiveVariables()["a"]);
     }
 
@@ -195,7 +195,7 @@ public class EnvironmentServiceTests : IDisposable
         service.Create("dev");
         service.SetVariable("dev", "a", "1");
 
-        Assert.False(service.RenameVariable("dev", "a", "  "));
+        Assert.True(service.RenameVariable("dev", "a", "  ").IsFailed);
         Assert.Equal("1", service.ActiveVariables()["a"]);
     }
 
@@ -206,7 +206,7 @@ public class EnvironmentServiceTests : IDisposable
         service.Create("dev");
         service.SetVariable("dev", "a", "1");
 
-        Assert.True(service.RenameVariable("dev", "a", "a"));
+        Assert.True(service.RenameVariable("dev", "a", "a").IsSuccess);
         Assert.Equal("1", service.ActiveVariables()["a"]);
     }
 
@@ -285,6 +285,88 @@ public class EnvironmentServiceTests : IDisposable
         service.Activate("dev");
 
         Assert.Equal(0, raised);
+    }
+
+    [Fact]
+    public void Create_Duplicate_ReportsWhichNameClashed()
+    {
+        var service = new EnvironmentService(EnvironmentsPath);
+        service.Create("dev");
+
+        var result = service.Create("DEV");
+
+        Assert.True(result.IsFailed);
+        Assert.Contains("\"DEV\"", result.Errors.Single().Message);
+        Assert.Single(service.Snapshot());
+    }
+
+    [Fact]
+    public void SetVariable_BlankKey_ReportsWhyInsteadOfSilentlyIgnoring()
+    {
+        var service = new EnvironmentService(EnvironmentsPath);
+        service.Create("dev");
+
+        var result = service.SetVariable("dev", "  ", "x");
+
+        Assert.True(result.IsFailed);
+        Assert.Contains("cannot be blank", result.Errors.Single().Message);
+    }
+
+    [Fact]
+    public void SetVariable_UnknownEnvironment_NamesTheMissingOne()
+    {
+        var service = new EnvironmentService(EnvironmentsPath);
+
+        var result = service.SetVariable("nope", "a", "1");
+
+        Assert.True(result.IsFailed);
+        Assert.Contains("\"nope\"", result.Errors.Single().Message);
+    }
+
+    [Fact]
+    public void SetVariable_Valid_Succeeds()
+    {
+        var service = new EnvironmentService(EnvironmentsPath);
+        service.Create("dev");
+
+        Assert.True(service.SetVariable("dev", "a", "1").IsSuccess);
+    }
+
+    [Fact]
+    public void RenameVariable_ToAnExistingName_SaysWhichOneIsTaken()
+    {
+        var service = new EnvironmentService(EnvironmentsPath);
+        service.Create("dev");
+        service.SetVariable("dev", "a", "1");
+        service.SetVariable("dev", "b", "2");
+
+        var result = service.RenameVariable("dev", "a", "b");
+
+        Assert.True(result.IsFailed);
+        Assert.Contains("\"b\"", result.Errors.Single().Message);
+    }
+
+    [Fact]
+    public void RenameVariable_UnknownVariable_SaysSo()
+    {
+        var service = new EnvironmentService(EnvironmentsPath);
+        service.Create("dev");
+
+        var result = service.RenameVariable("dev", "ghost", "x");
+
+        Assert.True(result.IsFailed);
+        Assert.Contains("\"ghost\"", result.Errors.Single().Message);
+    }
+
+    [Fact]
+    public void RenameVariable_UnknownEnvironment_NamesTheMissingOne()
+    {
+        var service = new EnvironmentService(EnvironmentsPath);
+
+        var result = service.RenameVariable("nope", "a", "b");
+
+        Assert.True(result.IsFailed);
+        Assert.Contains("\"nope\"", result.Errors.Single().Message);
     }
 
     [Fact]

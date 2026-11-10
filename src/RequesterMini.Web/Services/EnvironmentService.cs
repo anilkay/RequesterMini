@@ -1,4 +1,5 @@
 using AppLogger;
+using FluentResults;
 using JsonFileStore;
 using RequesterMini.Web.Models;
 using RequesterMini.Web.Serialization;
@@ -10,8 +11,13 @@ namespace RequesterMini.Web.Services;
 /// Named variable environments and the choice of which is active, backed by one file. Singleton for
 /// the same reason as the other stores: one file, so one writer.
 /// <para>
-/// Environment names are unique case-insensitively and identify an environment across every method
-/// here, matching how collections are keyed.
+/// Environment names are unique case-insensitively — see <see cref="NameRules"/> — and identify an
+/// environment across every method here, matching how collections are keyed.
+/// </para>
+/// <para>
+/// A method returns <see cref="Result"/> when the caller has something to tell the user: a name was
+/// blank, taken, or pointed at nothing. Removals and <see cref="Activate"/> stay <c>void</c> — they
+/// are idempotent, and an environment that is already gone is the outcome the caller wanted.
 /// </para>
 /// </summary>
 public sealed class EnvironmentService
@@ -90,28 +96,29 @@ public sealed class EnvironmentService
         Changed?.Invoke();
     }
 
-    /// <summary>Creates an empty environment. Returns false when the name is blank or taken.</summary>
-    public bool Create(string name)
+    /// <summary>Creates an empty environment, or reports why the name was rejected.</summary>
+    public Result Create(string name)
     {
-        var trimmed = (name ?? "").Trim();
-        if (trimmed.Length == 0) return false;
+        string created;
 
         lock (_gate)
         {
-            if (Find(trimmed) is not null) return false;
+            var validated = NameRules.Validate(name, _environments.Select(e => e.Name), "environment");
+            if (validated.IsFailed) return validated.ToResult();
 
-            _environments.Add(new VariableEnvironment(trimmed, []));
+            created = validated.Value;
+            _environments.Add(new VariableEnvironment(created, []));
 
             // The first environment becomes active: creating one and seeing nothing resolve would
             // just be a second step to forget.
-            if (_activeName.Length == 0) _activeName = trimmed;
+            if (_activeName.Length == 0) _activeName = created;
 
             Save();
         }
 
-        Logger.Info($"Environment created: {trimmed}");
+        Logger.Info($"Environment created: {created}");
         Changed?.Invoke();
-        return true;
+        return Result.Ok();
     }
 
     public void Delete(string name)
@@ -133,22 +140,23 @@ public sealed class EnvironmentService
         Changed?.Invoke();
     }
 
-    /// <summary>Adds or updates a variable. A blank key is ignored.</summary>
-    public void SetVariable(string environmentName, string key, string value)
+    /// <summary>Adds or updates a variable, or reports why it was rejected.</summary>
+    public Result SetVariable(string environmentName, string key, string value)
     {
         var trimmedKey = (key ?? "").Trim();
-        if (trimmedKey.Length == 0) return;
+        if (trimmedKey.Length == 0) return Result.Fail("A variable name cannot be blank.");
 
         lock (_gate)
         {
             var existing = Find(environmentName);
-            if (existing is null) return;
+            if (existing is null) return Result.Fail(UnknownEnvironment(environmentName));
 
             existing.Variables[trimmedKey] = value ?? "";
             Save();
         }
 
         Changed?.Invoke();
+        return Result.Ok();
     }
 
     public void RemoveVariable(string environmentName, string key)
@@ -165,20 +173,29 @@ public sealed class EnvironmentService
     }
 
     /// <summary>
-    /// Renames a variable, keeping its value and leaving the rest of the environment alone.
-    /// Returns false when the new name is blank or already used.
+    /// Renames a variable, keeping its value and leaving the rest of the environment alone, or
+    /// reports why the new name was rejected. Renaming to the name it already has succeeds.
     /// </summary>
-    public bool RenameVariable(string environmentName, string oldKey, string newKey)
+    public Result RenameVariable(string environmentName, string oldKey, string newKey)
     {
         var trimmed = (newKey ?? "").Trim();
-        if (trimmed.Length == 0) return false;
-        if (string.Equals(oldKey, trimmed, StringComparison.Ordinal)) return true;
+        if (trimmed.Length == 0) return Result.Fail("A variable name cannot be blank.");
+        if (string.Equals(oldKey, trimmed, StringComparison.Ordinal)) return Result.Ok();
 
         lock (_gate)
         {
             var existing = Find(environmentName);
-            if (existing is null || !existing.Variables.TryGetValue(oldKey, out var value)) return false;
-            if (existing.Variables.ContainsKey(trimmed)) return false;
+            if (existing is null) return Result.Fail(UnknownEnvironment(environmentName));
+
+            if (!existing.Variables.TryGetValue(oldKey, out var value))
+            {
+                return Result.Fail($"There is no variable called \"{oldKey}\" in {existing.Name}.");
+            }
+
+            if (existing.Variables.ContainsKey(trimmed))
+            {
+                return Result.Fail($"A variable called \"{trimmed}\" already exists in {existing.Name}.");
+            }
 
             existing.Variables.Remove(oldKey);
             existing.Variables[trimmed] = value;
@@ -186,8 +203,11 @@ public sealed class EnvironmentService
         }
 
         Changed?.Invoke();
-        return true;
+        return Result.Ok();
     }
+
+    private static string UnknownEnvironment(string name) =>
+        $"There is no environment called \"{name}\".";
 
     // Callers already hold the lock.
     private VariableEnvironment? Find(string name) =>

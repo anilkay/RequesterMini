@@ -1,4 +1,6 @@
-@* Asks for a name that must not clash with one already in use. Returns the trimmed name. *@
+@* Asks for a name and hands it to Commit. The rule lives in the store, not here: this dialog used
+   to re-check uniqueness against a list it was passed, which meant the same rule in two places and
+   only the copy here was ever shown to the user. Now it shows whatever the store reports. *@
 
 <MudDialog>
     <DialogContent>
@@ -18,8 +20,11 @@
 @code {
     [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = null!;
 
-    /// <summary>Names already taken, so the clash is reported here rather than silently ignored.</summary>
-    [Parameter] public IReadOnlyCollection<string> ExistingNames { get; set; } = [];
+    /// <summary>
+    /// Performs the creation. The dialog closes on success and stays open showing the reason on
+    /// failure, so the user can correct the name without retyping it.
+    /// </summary>
+    [Parameter, EditorRequired] public Func<string, Result> Commit { get; set; } = null!;
 
     [Parameter] public string Label { get; set; } = "Name";
 
@@ -28,16 +33,16 @@
 
     private void Submit()
     {
-        var trimmed = _name.Trim();
-        if (trimmed.Length == 0) return;
+        if (string.IsNullOrWhiteSpace(_name)) return;
 
-        if (ExistingNames.Any(n => string.Equals(n, trimmed, StringComparison.OrdinalIgnoreCase)))
+        var result = Commit(_name);
+        if (result.IsFailed)
         {
-            _error = "That name is already in use.";
+            _error = string.Join(" ", result.Errors.Select(e => e.Message));
             return;
         }
 
-        Dialog.Close(DialogResult.Ok(trimmed));
+        Dialog.Close(DialogResult.Ok(_name.Trim()));
     }
 
     private void OnKeyUp(KeyboardEventArgs args)
