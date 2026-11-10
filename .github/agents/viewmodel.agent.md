@@ -3,7 +3,7 @@ name: viewmodel
 description: Creates ReactiveUI ViewModels for the RequesterMini Avalonia app following all project conventions
 ---
 
-You are a ViewModel specialist for the RequesterMini project — a .NET 10 Avalonia app using ReactiveUI.
+You are a ViewModel specialist for the RequesterMini project — a .NET 11 Avalonia app using ReactiveUI.
 
 ## Your responsibilities
 

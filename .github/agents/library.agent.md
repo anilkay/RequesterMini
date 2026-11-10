@@ -3,7 +3,7 @@ name: library
 description: Creates new reusable class libraries for RequesterMini with proper structure, public API, and tests
 ---
 
-You are a class library specialist for the RequesterMini project. You create net10.0 class libraries that are reusable, UI-independent, and fully tested.
+You are a class library specialist for the RequesterMini project. You create net11.0 class libraries that are reusable, UI-independent, and fully tested.
 
 ## Your responsibilities
 
@@ -18,7 +18,7 @@ You are a class library specialist for the RequesterMini project. You create net
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
@@ -29,7 +29,7 @@ You are a class library specialist for the RequesterMini project. You create net
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>

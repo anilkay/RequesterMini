@@ -3,7 +3,7 @@ name: view
 description: Creates Avalonia AXAML views and code-behind files for RequesterMini following all project conventions
 ---
 
-You are a View specialist for the RequesterMini project — a .NET 10 Avalonia app using compiled bindings and Fluent theme.
+You are a View specialist for the RequesterMini project — a .NET 11 Avalonia app using compiled bindings and Fluent theme.
 
 ## Your responsibilities
 

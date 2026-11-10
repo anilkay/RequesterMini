@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-RequesterMini is a cross-platform HTTP request client (a mini Postman/Insomnia) on .NET 10, with two front ends over a shared set of libraries: an Avalonia + ReactiveUI desktop app and a Blazor Server + MudBlazor web app.
+RequesterMini is a cross-platform HTTP request client (a mini Postman/Insomnia) on .NET 11, with two front ends over a shared set of libraries: an Avalonia + ReactiveUI desktop app and a Blazor Server + MudBlazor web app.
 
 ## Conventions
 
@@ -51,7 +51,7 @@ It serves plain HTTP on `8080` behind a TLS-terminating reverse proxy (`X-Forwar
 ### Solution layout
 - `src/RequesterMini/` — the Avalonia `WinExe`. Contains `Views/` (AXAML + code-behind), `ViewModels/`, `Models/`, `Utils/`, `Constants/`.
 - `src/RequesterMini.Web/` — the Blazor Server app (MudBlazor UI). Contains `Components/` (`Pages/`, `Layout/`, `Shared/`), `Services/`, `Models/`, `Utils/`, `Constants/`. Ships with a `Dockerfile` (build context is the repo root) and a root `compose.yaml`.
-- `src/AppLogger/`, `src/CurlExporter/`, `src/JsonFileStore/`, `src/BrunoImporter/`, `src/HttpRequesting/`, `src/HttpAuth/`, `src/SyntaxHighlighter/`, `src/UrlQuery/`, `src/Templating/` — standalone `net10.0` class libraries with zero UI dependencies, each with a paired `tests/*.Tests` project. **Reusable, UI-free logic belongs in a library so it can be unit-tested in isolation**; only UI/ViewModel glue stays in the front ends.
+- `src/AppLogger/`, `src/CurlExporter/`, `src/JsonFileStore/`, `src/BrunoImporter/`, `src/HttpRequesting/`, `src/HttpAuth/`, `src/SyntaxHighlighter/`, `src/UrlQuery/`, `src/Templating/` — standalone `net11.0` class libraries with zero UI dependencies, each with a paired `tests/*.Tests` project. **Reusable, UI-free logic belongs in a library so it can be unit-tested in isolation**; only UI/ViewModel glue stays in the front ends.
   - A new library the web app references also needs a `COPY` line in `src/RequesterMini.Web/Dockerfile`. `dotnet build` and `dotnet test` will not notice it missing — only the container build does. The `CI` workflow builds that image on every push to `main`, which is what catches it; before that workflow existed the first sign was a failed release, and v0.3.0 had to be tagged twice.
 - `tests/RequesterMini.Tests/` — ViewModel tests for the desktop app, which reaches them through `InternalsVisibleTo` since ViewModel members are `internal`. See **Testing the desktop ViewModels** below.
 
@@ -59,6 +59,8 @@ It serves plain HTTP on `8080` behind a TLS-terminating reverse proxy (`X-Forwar
 The desktop app predates the web app and is the reference implementation — leave it alone unless a change is asked for explicitly. The web app deliberately does **not** reference it; the request-sending logic it needs is `src/HttpRequesting` (`HttpRequestRunner`), a library port of the desktop app's `Utils/MakeRequest`. **Those two remain duplicates: a change to one needs the same change in the other** (or the desktop app should finally be pointed at the library). Everything else a feature needs is shared — proxying (`ProxyClientFactory`), auth (`BasicAuth`, `BearerAuth`) and variables (`VariableInterpolator`) all live in libraries both front ends call.
 
 Web-app state lives in four services: `RequestWorkspace` (scoped — the request being composed, one per Blazor circuit) and the singletons `RequestHistoryService`, `CollectionService` and `EnvironmentService`, each a `JsonFileStore` over one file. The web app has no `MessageBus`; pages talk through the scoped workspace and subscribe to the singletons' `Changed` events. The desktop app keeps the same three stores inside `OldRequestsWindowViewModel` and reaches the main window over `MessageBus`.
+
+Browser calls from the web app (clipboard, file download) go through `Utils/BrowserActions`, not `IJSRuntime.InvokeVoidAsync` directly. A JS call in Blazor Server can fail without anything being wrong — the circuit may have dropped, or the browser may refuse the write — and the .NET 11 `BL0016` analyzer flags unguarded calls. The wrappers return `false` instead of throwing, and `CopyTextAsync` reads the browser's real answer, so a page must say "Could not copy" rather than assume success.
 
 ### Variables
 `{{name}}` placeholders are resolved from the active environment at the moment a request is sent, and for the cURL export. Everything persisted — history, collections — keeps the **template** form, so a reloaded request follows whichever environment is active then. An unknown placeholder is left as written rather than blanked.

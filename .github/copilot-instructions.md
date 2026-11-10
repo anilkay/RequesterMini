@@ -2,7 +2,7 @@
 
 ## Tech Stack
 
-- .NET 10 / C# 14 — use `field` keyword, modern APIs, nullable enabled everywhere
+- .NET 11 / C# 15 — use `field` keyword, modern APIs, nullable enabled everywhere
 - Avalonia UI 11.3 — Fluent theme, compiled bindings (`AvaloniaUseCompiledBindingsByDefault=true`)
 - ReactiveUI — MVVM, `ReactiveObject`, `ReactiveCommand`, `MessageBus`, `Interaction`
 - OneOf — discriminated union result types for typed failures on the request path (no exceptions for control flow)
@@ -185,7 +185,7 @@ ArgumentNullException.ThrowIfNull(headers);
 
 ## Class Libraries
 
-1. Target `net10.0` SDK-style `classlib`.
+1. Target `net11.0` SDK-style `classlib`.
 2. `public` API with argument validation at entry points.
 3. Fluent builder pattern for multi-step construction.
 4. Map string concepts to strongly-typed enums inside the library.

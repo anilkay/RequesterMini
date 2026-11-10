@@ -5,7 +5,7 @@ description: Build, launch, and drive the RequesterMini desktop app (Avalonia HT
 
 # Run RequesterMini
 
-RequesterMini is a native **Avalonia + ReactiveUI desktop GUI** (.NET 10).
+RequesterMini is a native **Avalonia + ReactiveUI desktop GUI** (.NET 11).
 There is no headless mode and its accessibility peers ignore AppleScript
 AXPress, so we drive it with **real HID events**: read element coordinates
 from the AX tree, post mouse/keyboard events with a tiny CoreGraphics tool
@@ -22,7 +22,7 @@ Paths below are relative to the repo root (`<unit>/`). The driver lives at
 
 ## Prerequisites
 
-- macOS with the **.NET 10 SDK** (`dotnet --version` → `10.0.101` verified).
+- macOS with the **.NET 11 SDK** (the solution targets `net11.0`, so `dotnet --version` must report 11.x).
 - **clang** (Xcode Command Line Tools) to build `uidriver`.
   `drive.sh` compiles it on first use; nothing to install manually.
 - No `cliclick`, no Python `Quartz`, no Swift needed (see Gotchas — those
