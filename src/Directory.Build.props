@@ -1,0 +1,19 @@
+<Project>
+
+  <!--
+    Runtime async (.NET 11): the runtime, not a compiler-generated state machine, suspends and resumes
+    async methods. Off by default; this opts every project under src/ in.
+
+    It lives in src/ rather than the repository root on purpose. The web Dockerfile copies only src/,
+    so a root-level Directory.Build.props would never reach the container build and the setting would
+    be silently off in the shipped image. For the same reason it does not apply to tests/: those
+    assemblies hold no production async code, and the ViewModel tests drive the src/ assemblies,
+    which are built with it.
+
+    To switch it off, delete the Features line. Nothing else depends on it.
+  -->
+  <PropertyGroup>
+    <Features>$(Features);runtime-async=on</Features>
+  </PropertyGroup>
+
+</Project>

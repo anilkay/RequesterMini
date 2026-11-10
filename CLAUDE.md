@@ -77,6 +77,13 @@ The app publishes trimmed + single-file, and reflection-based JSON is disabled (
 - All JSON must go through `Utils/SourceGenerationContext.cs` (source-generated `JsonTypeInfo`). Any new serialized type must be registered there, or it fails at runtime. Pretty-printing without a type uses `Utf8JsonWriter`/`JsonDocument` (trimming-safe).
 - ReactiveUI relies on reflection, so its assemblies are pinned via `TrimmerRootAssembly` in the csproj, and constructors that build `ReactiveCommand`s carry `[RequiresUnreferencedCode(...)]`.
 
+### Runtime async
+Every project under `src/` is compiled with .NET 11's runtime async (`<Features>$(Features);runtime-async=on</Features>` in `src/Directory.Build.props`): the runtime, not a compiler-generated state machine, suspends and resumes `async` methods. Delete that one line to turn it off; nothing else depends on it.
+
+- **The file lives in `src/` on purpose.** The web `Dockerfile` copies only `src/`, so a repo-root `Directory.Build.props` would never reach the container build and the setting would be silently off in the shipped image. It deliberately does not cover `tests/`, whose assemblies hold no production async code (the ViewModel tests drive the `src/` assemblies, which have it).
+- **How to tell it is on:** an `async` method has `MethodImplAttributes.Async` (`0x2000`), no `AsyncStateMachineAttribute`, and the assembly has no compiler-generated `<Name>d__N` state-machine type. `dotnet build -p:Features=` (an empty override) builds the same code without it, which makes a handy before/after.
+- It is the riskiest .NET 11 feature in use here, because the desktop app publishes trimmed + single-file. If a published build misbehaves, turn it off first and see whether the problem goes away.
+
 ### Request flow
 `App.axaml.cs` wires DI (`ServiceCollection` → `AddHttpClient` + `MainWindowViewModel`) and sets the main window's `DataContext`. The user configures a request in `MainWindowViewModel`; sending it constructs a `Utils/MakeRequest` (given the shared `HttpClient`, method, body, body-type, url, headers, and an `IElapsedTimerFactory` for timing). `MakeRequest.Execute` returns `OneOf<RequestSuccess, RequestFailure>` — **no exceptions for expected failures** (network errors, cancellation). Requests are cancellable via a `CancellationTokenSource` held by the ViewModel.
 
