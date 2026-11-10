@@ -222,8 +222,14 @@
             return;
         }
 
-        await Js.InvokeVoidAsync("requesterMini.copyText", Workspace.BuildCurl());
-        Snackbar.Add("cURL command copied", Severity.Success);
+        if (await Js.CopyTextAsync(Workspace.BuildCurl()))
+        {
+            Snackbar.Add("cURL command copied", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add("Could not copy — the browser blocked clipboard access.", Severity.Error);
+        }
     }
 
     private async Task ImportBruAsync(IBrowserFile? file)

@@ -104,8 +104,14 @@
     {
         if (Response is null) return;
 
-        await Js.InvokeVoidAsync("requesterMini.copyText", DisplayBody);
-        Snackbar.Add("Response copied", Severity.Success);
+        if (await Js.CopyTextAsync(DisplayBody))
+        {
+            Snackbar.Add("Response copied", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add("Could not copy — the browser blocked clipboard access.", Severity.Error);
+        }
     }
 
     private async Task DownloadAsync()
@@ -119,6 +125,9 @@
             _ => "txt",
         };
 
-        await Js.InvokeVoidAsync("requesterMini.download", $"response.{extension}", DisplayBody);
+        if (!await Js.DownloadTextAsync($"response.{extension}", DisplayBody))
+        {
+            Snackbar.Add("Could not start the download.", Severity.Error);
+        }
     }
 }
