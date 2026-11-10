@@ -2,7 +2,7 @@
 #   docker build -f src/RequesterMini.Web/Dockerfile -t requestermini-web .
 # The web app references sibling libraries, so the whole src tree has to be reachable.
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 
 # Project files first: this layer is cached until a csproj changes, so code edits skip the restore.
@@ -30,7 +30,7 @@ COPY src/ src/
 RUN dotnet publish src/RequesterMini.Web/RequesterMini.Web.csproj \
     -c Release -o /app/publish
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
