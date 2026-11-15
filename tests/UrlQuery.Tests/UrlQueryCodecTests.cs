@@ -162,6 +162,116 @@ public class UrlQueryCodecTests
         Assert.Equal("https://example.com?a=3", result);
     }
 
+    // {{placeholders}} ------------------------------------------------------------------------
+    // The variables feature resolves {{name}} when a request is sent. Rewriting the query used to
+    // percent-encode the braces, so touching the Params tab turned {{id}} into %7B%7Bid%7D%7D and the
+    // placeholder stopped resolving.
+
+    [Fact]
+    public void Build_PlaceholderInAValue_IsNotPercentEncoded()
+    {
+        var result = UrlQueryCodec.Build("https://example.com/a", [new QueryParam("id", "{{id}}")]);
+
+        Assert.Equal("https://example.com/a?id={{id}}", result);
+    }
+
+    [Fact]
+    public void Build_PlaceholderInAKey_IsNotPercentEncoded()
+    {
+        var result = UrlQueryCodec.Build("https://example.com", [new QueryParam("{{k}}", "v")]);
+
+        Assert.Equal("https://example.com?{{k}}=v", result);
+    }
+
+    [Fact]
+    public void Build_PlaceholderWithSpacesInsideTheBraces_IsNotPercentEncoded()
+    {
+        var result = UrlQueryCodec.Build("https://example.com", [new QueryParam("id", "{{ id }}")]);
+
+        Assert.Equal("https://example.com?id={{ id }}", result);
+    }
+
+    [Fact]
+    public void Build_TextAroundAPlaceholder_IsStillEscaped()
+    {
+        var result = UrlQueryCodec.Build("https://example.com", [new QueryParam("q", "pre {{id}} post&x")]);
+
+        Assert.Equal("https://example.com?q=pre%20{{id}}%20post%26x", result);
+    }
+
+    [Theory]
+    [InlineData("{notAPlaceholder}", "%7BnotAPlaceholder%7D")]
+    [InlineData("{{}}", "%7B%7B%7D%7D")]
+    [InlineData("{{not a name}}", "%7B%7Bnot%20a%20name%7D%7D")]
+    public void Build_BracesThatAreNotAPlaceholder_AreEscapedAsBefore(string value, string expected)
+    {
+        var result = UrlQueryCodec.Build("https://example.com", [new QueryParam("q", value)]);
+
+        Assert.Equal($"https://example.com?q={expected}", result);
+    }
+
+    [Fact]
+    public void ParseThenBuild_KeepsAPlaceholderIntact()
+    {
+        const string url = "https://example.com/items?id={{id}}&sort={{ order }}";
+
+        Assert.Equal(url, UrlQueryCodec.Build(url, UrlQueryCodec.Parse(url)));
+    }
+
+    // Untouched parameters keep their text ---------------------------------------------------------
+
+    [Theory]
+    [InlineData("https://example.com?q=hello+world")]                  // '+' in a URL is a space to most servers
+    [InlineData("https://example.com?t=a%2Bb")]                        // %2B is a literal plus
+    [InlineData("https://example.com?q=hello+world&t=a%2Bb")]
+    [InlineData("https://example.com?flag")]                           // a key with no '='
+    [InlineData("https://example.com?a=1&a=2")]                        // repeated keys
+    [InlineData("https://example.com?x=%41")]                          // an escape that did not need escaping
+    public void ParseThenBuild_KeepsAnUntouchedParameterExactlyAsWritten(string url)
+    {
+        // Parse treats '+' as a literal and Build escapes it, so a round trip used to turn
+        // "hello+world" into "hello%2Bworld" — a different request — just from opening the Params tab.
+        Assert.Equal(url, UrlQueryCodec.Build(url, UrlQueryCodec.Parse(url)));
+    }
+
+    [Fact]
+    public void Build_EditedParameter_IsEncodedFreshWhileTheOthersKeepTheirText()
+    {
+        const string url = "https://example.com?q=hello+world&id=1";
+        var parameters = UrlQueryCodec.Parse(url);
+        parameters[1] = parameters[1] with { Value = "2" };
+
+        Assert.Equal("https://example.com?q=hello+world&id=2", UrlQueryCodec.Build(url, parameters));
+    }
+
+    [Fact]
+    public void Build_RepeatedKeys_EditingOneLeavesTheOtherAsWritten()
+    {
+        const string url = "https://example.com?a=1&a=2";
+        var parameters = UrlQueryCodec.Parse(url);
+        parameters[0] = parameters[0] with { Value = "9" };
+
+        Assert.Equal("https://example.com?a=9&a=2", UrlQueryCodec.Build(url, parameters));
+    }
+
+    [Fact]
+    public void Build_ReorderedParameters_KeepEachOnesText()
+    {
+        const string url = "https://example.com?a=x+y&b=1";
+        var parameters = UrlQueryCodec.Parse(url);
+        parameters.Reverse();
+
+        Assert.Equal("https://example.com?b=1&a=x+y", UrlQueryCodec.Build(url, parameters));
+    }
+
+    [Fact]
+    public void Build_ANewParameterWithAPlus_IsEscapedSoItCannotBeMistakenForASpace()
+    {
+        var result = UrlQueryCodec.Build("https://example.com", [new QueryParam("t", "a+b")]);
+
+        Assert.Equal("https://example.com?t=a%2Bb", result);
+    }
+
     [Fact]
     public void Build_PreservesFragment()
     {

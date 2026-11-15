@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- The encoder must leave {{placeholders}} alone, and Templating owns what a placeholder is. -->
+    <ProjectReference Include="..\Templating\Templating.csproj" />
+  </ItemGroup>
+
 </Project>

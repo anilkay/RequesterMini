@@ -67,6 +67,34 @@ public static partial class VariableInterpolator
         return missing;
     }
 
+    /// <summary>
+    /// Splits <paramref name="template"/> into runs that are either plain text or a whole
+    /// <c>{{placeholder}}</c> token, in order. Concatenating the runs gives the input back exactly.
+    /// <para>
+    /// For code that must treat the two differently without carrying its own copy of the placeholder
+    /// pattern — the query-string encoder escapes the text around a placeholder but must leave the
+    /// placeholder itself alone, or it can no longer be resolved.
+    /// </para>
+    /// </summary>
+    public static List<(string Text, bool IsPlaceholder)> Split(string? template)
+    {
+        var runs = new List<(string Text, bool IsPlaceholder)>();
+        if (string.IsNullOrEmpty(template)) return runs;
+
+        var position = 0;
+        foreach (Match match in PlaceholderRegex().Matches(template))
+        {
+            if (match.Index > position) runs.Add((template[position..match.Index], false));
+
+            runs.Add((match.Value, true));
+            position = match.Index + match.Length;
+        }
+
+        if (position < template.Length) runs.Add((template[position..], false));
+
+        return runs;
+    }
+
     /// <summary>True when <paramref name="template"/> contains at least one placeholder.</summary>
     public static bool HasPlaceholders(string? template) =>
         !string.IsNullOrEmpty(template) && PlaceholderRegex().IsMatch(template);

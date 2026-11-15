@@ -154,4 +154,47 @@ public class VariableInterpolatorTests
     {
         Assert.Equal(expected, VariableInterpolator.HasPlaceholders(template));
     }
+
+    [Fact]
+    public void Split_AlternatesTextAndPlaceholders()
+    {
+        var runs = VariableInterpolator.Split("a{{x}}b{{ y }}");
+
+        Assert.Equal(
+            [("a", false), ("{{x}}", true), ("b", false), ("{{ y }}", true)],
+            runs);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("plain text")]
+    [InlineData("{{a}}")]
+    [InlineData("{{a}}{{b}}")]
+    [InlineData("pre {{a}} mid {{b}} post")]
+    [InlineData("{not}{{}}{{ }}{{a b}}")]
+    [InlineData("{\"a\": {{x}}, \"b\": {\"c\": 1}}")]
+    public void Split_ConcatenatingTheRunsGivesTheInputBack(string template)
+    {
+        Assert.Equal(template, string.Concat(VariableInterpolator.Split(template).Select(r => r.Text)));
+    }
+
+    [Fact]
+    public void Split_AdjacentPlaceholders_AreSeparateRuns()
+    {
+        Assert.Equal([("{{a}}", true), ("{{b}}", true)], VariableInterpolator.Split("{{a}}{{b}}"));
+    }
+
+    [Fact]
+    public void Split_BracesThatAreNotAPlaceholder_StayPlainText()
+    {
+        Assert.Equal([("{{}} {x}", false)], VariableInterpolator.Split("{{}} {x}"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void Split_Empty_ReturnsNoRuns(string? template)
+    {
+        Assert.Empty(VariableInterpolator.Split(template));
+    }
 }

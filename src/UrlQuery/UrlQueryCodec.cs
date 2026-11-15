@@ -1,3 +1,5 @@
+using Templating;
+
 namespace UrlQuery;
 
 /// <summary>
@@ -42,11 +44,16 @@ public static class UrlQueryCodec
     /// </summary>
     public static List<QueryParam> ParseForm(string body) => ParseSegments(body, plusIsSpace: true);
 
-    private static List<QueryParam> ParseSegments(string text, bool plusIsSpace)
+    private static List<QueryParam> ParseSegments(string text, bool plusIsSpace) =>
+        ReadSegments(text, plusIsSpace).Select(s => s.Param).ToList();
+
+    // Each segment keeps the text exactly as written next to what it decodes to. Build uses that to
+    // leave a parameter alone when it has not changed.
+    private static List<(string Raw, QueryParam Param)> ReadSegments(string text, bool plusIsSpace)
     {
         ArgumentNullException.ThrowIfNull(text);
 
-        var result = new List<QueryParam>();
+        var result = new List<(string Raw, QueryParam Param)>();
         if (text.Length == 0) return result;
 
         foreach (var segment in text.Split('&'))
@@ -59,7 +66,7 @@ public static class UrlQueryCodec
 
             if (key.Length == 0) continue;
 
-            result.Add(new QueryParam(Unescape(key, plusIsSpace), Unescape(value, plusIsSpace)));
+            result.Add((segment, new QueryParam(Unescape(key, plusIsSpace), Unescape(value, plusIsSpace))));
         }
 
         return result;
@@ -80,10 +87,27 @@ public static class UrlQueryCodec
         int queryStart = body.IndexOf('?');
         var baseUrl = queryStart < 0 ? body : body[..queryStart];
 
+        // A parameter the user has not changed keeps the text it was written with. Parsing is lossy —
+        // "+" and "%2B" both decode to "+", "%41" and "A" to "A", a bare "flag" to flag="" — so
+        // re-encoding every parameter on every rewrite changed requests that nobody had touched:
+        // opening the Params tab turned "?q=hello+world" into "?q=hello%2Bworld".
+        var original = queryStart < 0 ? [] : ReadSegments(body[(queryStart + 1)..], plusIsSpace: false);
+
         var segments = new List<string>();
         foreach (var (key, value) in parameters)
         {
             if (string.IsNullOrWhiteSpace(key)) continue;
+
+            // First unused original segment that decodes to the same pair, so repeated keys and a
+            // reordering still pair up one to one.
+            var match = original.FindIndex(o => o.Param.Key == key && o.Param.Value == value);
+            if (match >= 0)
+            {
+                segments.Add(original[match].Raw);
+                original.RemoveAt(match);
+                continue;
+            }
+
             segments.Add($"{Escape(key)}={Escape(value)}");
         }
 
@@ -114,6 +138,10 @@ public static class UrlQueryCodec
         }
     }
 
+    // Escapes the text around a {{placeholder}} and leaves the placeholder itself alone. Escaped, the
+    // braces become %7B%7B and the variable can no longer be found, so the request would go out with
+    // the literal encoded text instead of the value.
     private static string Escape(string value) =>
-        value.Length == 0 ? "" : Uri.EscapeDataString(value);
+        string.Concat(VariableInterpolator.Split(value)
+            .Select(run => run.IsPlaceholder ? run.Text : Uri.EscapeDataString(run.Text)));
 }

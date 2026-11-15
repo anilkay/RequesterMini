@@ -391,6 +391,55 @@ public class RequestWorkspaceTests : IDisposable
     }
 
     [Fact]
+    public async Task QueryParamsTab_Edit_KeepsAPlaceholderInTheUrlSoItStillResolves()
+    {
+        // Touching the Params tab rewrites the URL's query. It used to percent-encode {{id}} into
+        // %7B%7Bid%7D%7D, which the interpolator cannot see — so the request went out with the
+        // literal encoded text and the "not defined" warning could not fire either.
+        var environments = NewEnvironments();
+        environments.Create("dev");
+        environments.SetVariable("dev", "id", "42");
+        var workspace = NewWorkspace(NewHistory(), environments);
+        workspace.Url = "https://example.test/items?id={{id}}";
+
+        workspace.AddQueryParam();
+        workspace.QueryParams[1].Key = "page";
+        workspace.QueryParams[1].Value = "2";
+        workspace.SyncUrlFromParams();
+
+        Assert.Equal("https://example.test/items?id={{id}}&page=2", workspace.Url);
+
+        await workspace.SendAsync();
+        Assert.Equal("https://example.test/items?id=42&page=2", _handler.LastRequest!.RequestUri!.ToString());
+    }
+
+    [Fact]
+    public void QueryParamsTab_Edit_StillReportsAnUndefinedPlaceholder()
+    {
+        var workspace = NewWorkspace(NewHistory());
+        workspace.Url = "https://example.test/items?id={{missing}}";
+
+        workspace.AddQueryParam();
+        workspace.SyncUrlFromParams();
+
+        Assert.Equal(["missing"], workspace.UnresolvedVariables());
+    }
+
+    [Fact]
+    public void QueryParamsTab_Edit_DoesNotTurnAPlusIntoAnEncodedPlus()
+    {
+        var workspace = NewWorkspace(NewHistory());
+        workspace.Url = "https://example.test/search?q=hello+world";
+
+        workspace.AddQueryParam();
+        workspace.QueryParams[1].Key = "page";
+        workspace.QueryParams[1].Value = "2";
+        workspace.SyncUrlFromParams();
+
+        Assert.Equal("https://example.test/search?q=hello+world&page=2", workspace.Url);
+    }
+
+    [Fact]
     public async Task SendAsync_BlankUrl_DoesNothing()
     {
         var history = NewHistory();

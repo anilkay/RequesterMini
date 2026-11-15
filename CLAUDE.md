@@ -102,12 +102,14 @@ This was a deliberate partial migration, not an unfinished one: FluentResults wa
 
 That tolerance has a sharp edge: a type the serializer cannot handle does not throw, it just stops persisting. A record with **two constructors** is the way this has bitten — System.Text.Json cannot tell which to use. Give persisted records one constructor, and cover each store with a round-trip-through-reload test.
 
+A second sharp edge is a file of the right JSON but the wrong shape: the nullability annotations are not enforced by the deserializer, so a missing list or a `null` entry comes back as an object the compiler believes is non-null. `StoreSanitizer` repairs what the web stores read, and the desktop window has matching guards. A read that *throws* is deliberately different from content that cannot be *deserialized*: only the latter moves the file to `.bak`, because an I/O error says nothing about what the file holds.
+
 ### Libraries at a glance
 - **CurlExporter** — `CurlCommandBuilder`, a fluent builder that turns the current request into a `curl` command string.
 - **BrunoImporter** — `BruYamlParser` / `BrunoFileImporter` import Bruno collection files (both `.bru` and OpenCollection `.yml`) into `BruRequest` objects.
 - **AppLogger** — static `Logger` (initialized once at startup) writing through pluggable `ILogSink`s (`FileSink`, `ConsoleSink`); log level is `Debug` in DEBUG builds.
-- **HttpRequesting** — `HttpRequestRunner` sends a `HttpRequestSpec` and returns `OneOf<RequestSuccess, RequestFailure>`; `ProxyClientFactory` builds the proxied `HttpClient`.
+- **HttpRequesting** — `HttpRequestRunner` sends a `HttpRequestSpec` and returns `OneOf<RequestSuccess, RequestFailure>`; `ProxyClientFactory` builds the proxied `HttpClient`; `FormBody.Encode` is the single source of the form-encoded text, used by the sender **and** the cURL export so they cannot disagree; `RequestTarget` describes a URL as `scheme://host[:port]` for failure messages, so a resolved secret in a path or query never reaches the screen, the log or history.
 - **HttpAuth** — `BasicAuth` and `BearerAuth` build Authorization header values; `AuthScheme` is the enum behind the UI's auth dropdown.
-- **UrlQuery** — `UrlQueryCodec` parses and rewrites query strings. `ParseQuery` also reads form bodies, which have the same `key=value&…` shape.
+- **UrlQuery** — `UrlQueryCodec` parses and rewrites query strings. `ParseQuery` reads a bare `key=value&…` string with `+` kept literal; `ParseForm` reads a form body, where `+` is a space. `Build` leaves a parameter that has not changed exactly as written (parsing is lossy: `+`/`%2B`, `%41`/`A`) and does not percent-encode `{{placeholders}}`, so it depends on `Templating`.
 - **SyntaxHighlighter** — `JsonHighlighter` / `XmlHighlighter` tokenize into UI-free `HighlightSegment`s; each front end maps `TokenKind` to its own colors.
-- **Templating** — `VariableInterpolator` resolves `{{name}}` placeholders; `VariableEnvironment` and `EnvironmentState` are the persisted shapes.
+- **Templating** — `VariableInterpolator` resolves `{{name}}` placeholders (`Split` separates them from surrounding text for code that must not touch them); `VariableEnvironment` and `EnvironmentState` are the persisted shapes.

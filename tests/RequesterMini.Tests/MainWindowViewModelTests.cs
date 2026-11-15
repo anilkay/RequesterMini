@@ -65,6 +65,20 @@ public class MainWindowViewModelTests : ReactiveTestBase
     }
 
     [Fact]
+    public void QueryParam_Edited_KeepsAPlaceholderAndAPlusInTheUrl()
+    {
+        // Rewriting the query used to encode {{id}} into %7B%7Bid%7D%7D, which no longer resolves, and
+        // turned "hello+world" into "hello%2Bworld".
+        var vm = new MainWindowViewModel { Url = "https://example.test/items?id={{id}}&q=hello+world" };
+
+        vm.AddQueryParamCommand.Execute().Subscribe();
+        vm.QueryParams[2].Key = "page";
+        vm.QueryParams[2].Value = "2";
+
+        Assert.Equal("https://example.test/items?id={{id}}&q=hello+world&page=2", vm.Url);
+    }
+
+    [Fact]
     public void QueryParam_Disabled_IsKeptButLeftOutOfTheUrl()
     {
         var vm = new MainWindowViewModel { Url = "https://example.test/api?keep=1" };
