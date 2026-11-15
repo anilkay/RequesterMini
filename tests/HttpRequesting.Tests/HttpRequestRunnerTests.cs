@@ -67,6 +67,45 @@ public class HttpRequestRunnerTests
     }
 
     [Fact]
+    public async Task SendAsync_UserContentType_ReplacesTheGeneratedOneInsteadOfJoiningIt()
+    {
+        // BuildContent already sets Content-Type. Adding the user's as a second value produced
+        // "application/json; charset=utf-8, application/vnd.api+json", which strict servers reject.
+        var handler = new StubHandler();
+        var runner = new HttpRequestRunner(ClientFor(handler));
+
+        await runner.SendAsync(new HttpRequestSpec("POST", "https://example.test/", "{}", "Json",
+            new Dictionary<string, string> { ["Content-Type"] = "application/vnd.api+json" }));
+
+        Assert.Equal(["application/vnd.api+json"], handler.LastRequest!.Content!.Headers.GetValues("Content-Type"));
+    }
+
+    [Fact]
+    public async Task SendAsync_UserContentTypeInOtherCase_StillReplacesTheGeneratedOne()
+    {
+        var handler = new StubHandler();
+        var runner = new HttpRequestRunner(ClientFor(handler));
+
+        await runner.SendAsync(new HttpRequestSpec("POST", "https://example.test/", "{}", "Json",
+            new Dictionary<string, string> { ["content-type"] = "text/csv" }));
+
+        Assert.Equal(["text/csv"], handler.LastRequest!.Content!.Headers.GetValues("Content-Type"));
+    }
+
+    [Fact]
+    public async Task SendAsync_FormBodyWithPlus_SendsItAsASpaceTheWayFormEncodingMeansIt()
+    {
+        // In an application/x-www-form-urlencoded body a '+' IS a space. Reading it as a literal plus
+        // and re-encoding it sent q=hello%2Bworld, changing what the user typed.
+        var handler = new StubHandler();
+        var runner = new HttpRequestRunner(ClientFor(handler));
+
+        await runner.SendAsync(new HttpRequestSpec("POST", "https://example.test/", "q=hello+world", "Form"));
+
+        Assert.Equal("q=hello+world", handler.LastRequestBody);
+    }
+
+    [Fact]
     public async Task SendAsync_ContentHeader_GoesToContentHeaders()
     {
         var handler = new StubHandler();
@@ -159,6 +198,23 @@ public class HttpRequestRunnerTests
         Assert.True(result.IsT1);
         Assert.Contains("boom", result.AsT1.Message);
         Assert.IsType<HttpRequestException>(result.AsT1.Exception);
+    }
+
+    [Fact]
+    public async Task SendAsync_Failure_DoesNotCarryTheResolvedSecretInTheMessage()
+    {
+        // By the time a request is sent, ?key={{apiKey}} has been resolved. The failure message is
+        // shown, logged and saved to history, so the secret must not be in it.
+        var runner = new HttpRequestRunner(ClientFor(new ThrowingHandler(new HttpRequestException("connection refused"))));
+
+        var result = await runner.SendAsync(new HttpRequestSpec("GET", "https://user:pw@api.test:8443/bot123SECRET/send?key=S3CR3T#frag"));
+
+        var message = result.AsT1.Message;
+        Assert.Contains("api.test:8443", message);
+        Assert.Contains("connection refused", message);
+        Assert.DoesNotContain("S3CR3T", message);
+        Assert.DoesNotContain("pw", message);
+        Assert.DoesNotContain("bot123SECRET", message);
     }
 
     [Fact]

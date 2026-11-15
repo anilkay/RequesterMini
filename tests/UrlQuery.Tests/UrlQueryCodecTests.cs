@@ -228,6 +228,39 @@ public class UrlQueryCodecTests
     }
 
     [Fact]
+    public void ParseForm_Plus_IsASpace()
+    {
+        Assert.Equal("hello world", UrlQueryCodec.ParseForm("q=hello+world").Single().Value);
+    }
+
+    [Fact]
+    public void ParseForm_EncodedPlus_IsALiteralPlus()
+    {
+        // The '+' is turned into a space BEFORE unescaping, so %2B still decodes to a plus.
+        Assert.Equal("a+b", UrlQueryCodec.ParseForm("q=a%2Bb").Single().Value);
+    }
+
+    [Fact]
+    public void ParseForm_PlusInTheKey_IsASpaceToo()
+    {
+        Assert.Equal("my key", UrlQueryCodec.ParseForm("my+key=v").Single().Key);
+    }
+
+    [Fact]
+    public void ParseForm_OtherwiseBehavesLikeParseQuery()
+    {
+        Assert.Equal(
+            UrlQueryCodec.ParseQuery("a=1&b=x%20y&flag&=orphan&&c="),
+            UrlQueryCodec.ParseForm("a=1&b=x%20y&flag&=orphan&&c="));
+    }
+
+    [Fact]
+    public void ParseForm_Null_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => UrlQueryCodec.ParseForm(null!));
+    }
+
+    [Fact]
     public void ParseQuery_Null_Throws()
     {
         Assert.Throws<ArgumentNullException>(() => UrlQueryCodec.ParseQuery(null!));

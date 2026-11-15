@@ -9,6 +9,7 @@ internal sealed class StubHandler : HttpMessageHandler
     public string? LastRequestBody { get; private set; }
     public HttpStatusCode Status { get; init; } = HttpStatusCode.OK;
     public string ResponseBody { get; init; } = "{\"ok\":true}";
+    public Exception? Throws { get; init; }
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
@@ -18,6 +19,8 @@ internal sealed class StubHandler : HttpMessageHandler
         LastRequestBody = request.Content is null
             ? null
             : await request.Content.ReadAsStringAsync(cancellationToken);
+
+        if (Throws is not null) throw Throws;
 
         return new HttpResponseMessage(Status)
         {

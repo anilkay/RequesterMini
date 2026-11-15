@@ -9,7 +9,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using RequesterMini.Models;
 using RequesterMini.Utils.Timers;
-using UrlQuery;
+
+// By alias rather than a plain using: HttpRequesting also defines RequestSuccess and RequestFailure,
+// which would collide with the RequesterMini.Models pair this file returns.
+using FormBody = HttpRequesting.FormBody;
+using RequestTarget = HttpRequesting.RequestTarget;
 
 namespace RequesterMini.Utils;
 public class MakeRequest {
@@ -55,11 +59,13 @@ public class MakeRequest {
                         content = new StringContent(_methodBody, Encoding.UTF8, "application/xml");
                         break;
                     case "form":
-                        // Read as key=value&key2=value2 and re-encode, so what reaches the wire is
-                        // valid regardless of how the user escaped what they typed.
-                        content = new FormUrlEncodedContent(
-                            UrlQueryCodec.ParseQuery(_methodBody)
-                                .Select(p => new KeyValuePair<string, string>(p.Key, p.Value)));
+                        // Shared with the cURL export, so the exported command sends the same text.
+                        // StringContent with the media type set afterwards keeps the header as plain
+                        // application/x-www-form-urlencoded.
+                        content = new StringContent(FormBody.Encode(_methodBody), Encoding.UTF8)
+                        {
+                            Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-www-form-urlencoded") },
+                        };
                         break;
                     default:
                         content = new StringContent(_methodBody);
@@ -76,6 +82,9 @@ public class MakeRequest {
                     // Content-related headers should be added to Content.Headers
                     if (IsContentHeader(header.Key) && request.Content is not null)
                     {
+                        // Replace, never append: the generated Content-Type is already set, and a second
+                        // value sent "application/json; charset=utf-8, application/vnd.api+json".
+                        request.Content.Headers.Remove(header.Key);
                         request.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
                     }
                     else
@@ -99,8 +108,9 @@ public class MakeRequest {
         }
         catch (Exception ex)
         {
-            var errorMessage = $"Error while making {_httpMethod} request to {_url}: {ex.Message}";
-            return new RequestFailure(errorMessage, ex);
+            // The URL's path and query are left out: the message is shown, logged and saved to history,
+            // and a {{variable}} in the URL has been resolved to its secret by now.
+            return new RequestFailure(RequestTarget.FailureMessage(_httpMethod, _url, ex), ex);
         }
     }
 

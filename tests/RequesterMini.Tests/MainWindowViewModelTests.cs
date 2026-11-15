@@ -288,6 +288,55 @@ public class MainWindowViewModelTests : ReactiveTestBase
     }
 
     [Fact]
+    public async Task Send_UserContentType_ReplacesTheGeneratedOne()
+    {
+        var handler = new StubHandler();
+        var vm = WithClient(handler);
+        vm.Url = "https://example.test/api";
+        vm.SelectedHttpMethod = "POST";
+        vm.Body = "{}";
+        vm.AddHeaderCommand.Execute().Subscribe();
+        vm.Headers[0].Key = "Content-Type";
+        vm.Headers[0].Value = "application/vnd.api+json";
+
+        await vm.ClickCommand.Execute();
+
+        Assert.Equal(["application/vnd.api+json"], handler.LastRequest!.Content!.Headers.GetValues("Content-Type"));
+    }
+
+    [Fact]
+    public async Task Send_FormBodyWithPlus_IsSentAsASpace()
+    {
+        var handler = new StubHandler();
+        var vm = WithClient(handler);
+        vm.Url = "https://example.test/api";
+        vm.SelectedHttpMethod = "POST";
+        vm.SelectedBodyType = "Form";
+        vm.Body = "q=hello+world";
+
+        await vm.ClickCommand.Execute();
+
+        Assert.Equal("q=hello+world", handler.LastRequestBody);
+    }
+
+    [Fact]
+    public async Task Send_Failure_DoesNotCarryAResolvedSecretIntoTheResponse()
+    {
+        // ?key={{apiKey}} is resolved before the request goes out. The failure text is shown and saved
+        // to history, so it must not repeat the resolved URL.
+        var handler = new StubHandler { Throws = new HttpRequestException("connection refused") };
+        var vm = WithClient(handler);
+        PublishEnvironment("dev", ("apiKey", "S3CR3T"));
+        vm.Url = "https://example.test/api?key={{apiKey}}";
+
+        await vm.ClickCommand.Execute();
+
+        Assert.Equal("Error", vm.ResponseStatusCode);
+        Assert.Contains("example.test", vm.ResponseBody);
+        Assert.DoesNotContain("S3CR3T", vm.ResponseBody);
+    }
+
+    [Fact]
     public async Task Send_ErrorStatus_IsReportedAsThatStatus()
     {
         var handler = new StubHandler { Status = HttpStatusCode.NotFound, ResponseBody = "nope" };

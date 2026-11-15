@@ -2,7 +2,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using HttpRequesting.Timers;
 using OneOf;
-using UrlQuery;
 
 namespace HttpRequesting;
 
@@ -59,6 +58,10 @@ public sealed class HttpRequestRunner
 
                 if (ContentHeaders.Contains(key) && request.Content is not null)
                 {
+                    // Replace, never append. BuildContent has already set Content-Type, and adding
+                    // the user's as a second value sent "application/json; charset=utf-8,
+                    // application/vnd.api+json", which strict servers reject.
+                    request.Content.Headers.Remove(key);
                     request.Content.Headers.TryAddWithoutValidation(key, value);
                 }
                 else
@@ -87,7 +90,9 @@ public sealed class HttpRequestRunner
         }
         catch (Exception ex)
         {
-            return new RequestFailure($"Error while making {spec.Method} request to {spec.Url}: {ex.Message}", ex);
+            // RequestTarget keeps the URL's path and query out of the message: it is shown, logged and
+            // saved to history, and by now a {{variable}} in the URL has been resolved to its secret.
+            return new RequestFailure(RequestTarget.FailureMessage(spec.Method, spec.Url, ex), ex);
         }
     }
 
@@ -104,13 +109,15 @@ public sealed class HttpRequestRunner
         };
 
     /// <summary>
-    /// Reads the body as <c>key=value&amp;key2=value2</c> and sends it form-encoded. The pairs are
-    /// re-encoded rather than passed through, so what reaches the wire is valid regardless of how
-    /// the user escaped what they typed.
+    /// Sends the body form-encoded, using <see cref="FormBody"/> so the cURL export writes exactly the
+    /// same text. StringContent with the media type set afterwards keeps the header as plain
+    /// <c>application/x-www-form-urlencoded</c>, as FormUrlEncodedContent did.
     /// </summary>
     private static HttpContent BuildFormContent(string body) =>
-        new FormUrlEncodedContent(
-            UrlQueryCodec.ParseQuery(body).Select(p => new KeyValuePair<string, string>(p.Key, p.Value)));
+        new StringContent(FormBody.Encode(body), Encoding.UTF8)
+        {
+            Headers = { ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded") },
+        };
 
     private static Dictionary<string, string> CollectHeaders(HttpResponseMessage response)
     {
