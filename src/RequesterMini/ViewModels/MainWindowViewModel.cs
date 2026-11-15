@@ -27,6 +27,7 @@ using UrlQuery;
 // RequestFailure, which would collide with the RequesterMini.Models pair this file already uses.
 using ProxySettings = HttpRequesting.ProxySettings;
 using ProxyClientFactory = HttpRequesting.ProxyClientFactory;
+using FormBody = HttpRequesting.FormBody;
 
 namespace RequesterMini.ViewModels;
 
@@ -308,11 +309,13 @@ public class MainWindowViewModel : ViewModelBase
                 builder.AddHeader(BearerAuth.HeaderName, BearerAuth.BuildHeaderValue(Resolve(AuthToken)));
             }
 
-            var curlBody = Resolve(Body);
+            // Only what is actually sent: a GET goes out without a body even when the disabled Body
+            // tab still holds text, and a form body goes out re-encoded.
+            var curlBody = IsBodyEnabled ? Resolve(Body) : "";
             if (!string.IsNullOrEmpty(curlBody)
-                && Enum.TryParse<BodyType>(SelectedBodyType, ignoreCase: true, out var bodyType))
+                && Enum.TryParse<BodyType>(SelectedBodyType, ignoreCase: true, out var curlBodyType))
             {
-                builder.SetBody(curlBody, bodyType);
+                builder.SetBody(curlBodyType == BodyType.Form ? FormBody.Encode(curlBody) : curlBody, curlBodyType);
             }
 
             var curl = builder.Build();
@@ -382,8 +385,18 @@ public class MainWindowViewModel : ViewModelBase
                 return;
             }
 
-            // Prepare headers dictionary
-            var headers = new Dictionary<string, string>();
+            // Everything that describes THIS request is captured here, before the await. The inputs
+            // stay editable while it is in flight, so reading them again afterwards recorded whatever
+            // the editor said by then: the new request paired with the old one's response.
+            var method = SelectedHttpMethod;
+            var url = Url;
+            var body = Body;
+            var bodyType = SelectedBodyType;
+            var proxyUrl = ProxyUrl;
+
+            // Header names are case-insensitive, so the dictionary is too: a typed "authorization" and
+            // the generated "Authorization" used to be two keys and went out joined into one value.
+            var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var header in Headers)
             {
                 if (header.IsEnabled && !string.IsNullOrWhiteSpace(header.Key))
@@ -396,11 +409,11 @@ public class MainWindowViewModel : ViewModelBase
             _cts?.Dispose();
             _cts = new CancellationTokenSource();
 
-            Logger.Info($"Sending {SelectedHttpMethod} request to {Url}");
+            Logger.Info($"Sending {method} request to {url}");
             HttpClient client = _httpClient;
             HttpClient? proxyClient = null;
             var proxySettings = new ProxySettings(
-                Resolve(ProxyUrl), Resolve(ProxyUsername), Resolve(ProxyPassword));
+                Resolve(proxyUrl), Resolve(ProxyUsername), Resolve(ProxyPassword));
             if (proxySettings.IsEnabled)
             {
                 var proxyResult = ProxyClientFactory.Create(proxySettings);
@@ -420,7 +433,7 @@ public class MainWindowViewModel : ViewModelBase
             // Placeholders are resolved on the way out only; history keeps the template form, so a
             // reloaded request still follows whichever environment is active then.
             MakeRequest makeRequest = new MakeRequest(
-                client, SelectedHttpMethod, Resolve(Body), SelectedBodyType, Resolve(Url),
+                client, method, Resolve(body), bodyType, Resolve(url),
                 BuildRequestHeaders(ResolveAll(headers)));
             OneOf<RequestSuccess, RequestFailure> result = await makeRequest.Execute(_cts.Token);
             proxyClient?.Dispose();
@@ -437,7 +450,7 @@ public class MainWindowViewModel : ViewModelBase
                           : $"{elapsed.TotalSeconds:F1} sec"
                       : "";
 
-                  Logger.Info($"Request succeeded. Method={SelectedHttpMethod}, Url={Url}, Status={success.StatusCode}, Duration={RequestTime}");
+                  Logger.Info($"Request succeeded. Method={method}, Url={url}, Status={success.StatusCode}, Duration={RequestTime}");
                  },
              failure =>
              {
@@ -446,7 +459,7 @@ public class MainWindowViewModel : ViewModelBase
                 FinishedTimeUtc = "";
                 RequestTime = "";
 
-                Logger.Error($"Request failed. Method={SelectedHttpMethod}, Url={Url}, Message={failure.Message}", failure.Exception);
+                Logger.Error($"Request failed. Method={method}, Url={url}, Message={failure.Message}", failure.Exception);
              });
 
 
@@ -454,7 +467,7 @@ public class MainWindowViewModel : ViewModelBase
 
             MessageBus.Current.SendMessage(ResponseBody, MessageBusConstants.NewJsonGenerated);
 
-            var oldRequestDto = new OldRequestDto(SelectedHttpMethod, Url, Body, ResponseStatusCode, ResponseBody, headers, ProxyUrl);
+            var oldRequestDto = new OldRequestDto(method, url, body, ResponseStatusCode, ResponseBody, headers, proxyUrl);
 
             MessageBus.Current.SendMessage(JsonSerializer.Serialize(oldRequestDto, SourceGenerationContext.Default.OldRequestDto), MessageBusConstants.NewRequest);
 
@@ -492,7 +505,7 @@ public class MainWindowViewModel : ViewModelBase
 
     private Dictionary<string, string> ResolveAll(Dictionary<string, string> headers)
     {
-        var resolved = new Dictionary<string, string>();
+        var resolved = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var header in headers)
         {
             resolved[Resolve(header.Key)] = Resolve(header.Value);
@@ -518,7 +531,7 @@ public class MainWindowViewModel : ViewModelBase
     {
         if (HasBasicCredentials)
         {
-            return new Dictionary<string, string>(headers)
+            return new Dictionary<string, string>(headers, StringComparer.OrdinalIgnoreCase)
             {
                 [BasicAuth.HeaderName] = BasicAuth.BuildHeaderValue(Resolve(AuthUsername), Resolve(AuthPassword)),
             };
@@ -526,7 +539,7 @@ public class MainWindowViewModel : ViewModelBase
 
         if (HasBearerToken)
         {
-            return new Dictionary<string, string>(headers)
+            return new Dictionary<string, string>(headers, StringComparer.OrdinalIgnoreCase)
             {
                 [BearerAuth.HeaderName] = BearerAuth.BuildHeaderValue(Resolve(AuthToken)),
             };

@@ -128,6 +128,15 @@ public sealed class RequestWorkspace : IDisposable
     {
         if (IsSending || string.IsNullOrWhiteSpace(Url)) return;
 
+        // Everything that describes THIS request is captured here, before the await. The inputs stay
+        // editable while it is in flight (and a history entry can be loaded over them), so reading
+        // Method/Url/Body again afterwards recorded whatever the editor said by then — the new request
+        // paired with the old one's response, and no record of what was actually sent.
+        var method = Method;
+        var url = Url;
+        var body = Body;
+        var bodyType = BodyType;
+        var proxyUrl = ProxyUrl;
         var headers = CollectHeaders();
 
         _cts?.Cancel();
@@ -139,7 +148,7 @@ public sealed class RequestWorkspace : IDisposable
         var variables = _environments.ActiveVariables();
 
         var proxySettings = new ProxySettings(
-            Resolve(ProxyUrl, variables), Resolve(ProxyUsername, variables), Resolve(ProxyPassword, variables));
+            Resolve(proxyUrl, variables), Resolve(ProxyUsername, variables), Resolve(ProxyPassword, variables));
         HttpClient? proxyClient = null;
 
         if (proxySettings.IsEnabled)
@@ -162,22 +171,22 @@ public sealed class RequestWorkspace : IDisposable
         IsSending = true;
         try
         {
-            Logger.Info($"Sending {Method} request to {Url}");
+            Logger.Info($"Sending {method} request to {url}");
 
             var client = proxyClient ?? _httpClientFactory.CreateClient(HttpConstants.RequestClientName);
             var runner = new HttpRequestRunner(client);
             var spec = new HttpRequestSpec(
-                Method,
-                Resolve(Url, variables),
-                Resolve(Body, variables),
-                BodyType,
+                method,
+                Resolve(url, variables),
+                Resolve(body, variables),
+                bodyType,
                 WithAuthHeader(ResolveAll(headers, variables), variables));
             var result = await runner.SendAsync(spec, _cts.Token);
 
             Response = result.Match(
                 success =>
                 {
-                    Logger.Info($"Request succeeded. Method={Method}, Url={Url}, Status={success.StatusCode}");
+                    Logger.Info($"Request succeeded. Method={method}, Url={url}, Status={success.StatusCode}");
                     return new ResponseView
                     {
                         StatusText = success.StatusCode,
@@ -191,7 +200,7 @@ public sealed class RequestWorkspace : IDisposable
                 },
                 failure =>
                 {
-                    Logger.Error($"Request failed. Method={Method}, Url={Url}, Message={failure.Message}", failure.Exception);
+                    Logger.Error($"Request failed. Method={method}, Url={url}, Message={failure.Message}", failure.Exception);
                     return new ResponseView
                     {
                         StatusText = "Error",
@@ -208,15 +217,15 @@ public sealed class RequestWorkspace : IDisposable
         }
 
         _history.Add(new StoredRequest(
-            Method,
-            Url,
-            Body,
-            BodyType,
+            method,
+            url,
+            body,
+            bodyType,
             Response.StatusText,
             Response.Body,
             headers,
             DateTime.UtcNow,
-            ProxyUrl));
+            proxyUrl));
     }
 
     public void Cancel() => _cts?.Cancel();
@@ -254,10 +263,12 @@ public sealed class RequestWorkspace : IDisposable
             builder.AddHeader(BearerAuth.HeaderName, BearerAuth.BuildHeaderValue(Resolve(AuthToken, variables)));
         }
 
-        var body = Resolve(Body, variables);
-        if (!string.IsNullOrEmpty(body) && Enum.TryParse<CurlExporter.BodyType>(_bodyType, ignoreCase: true, out var parsed))
+        // Only what is actually sent: a GET goes out without a body even when the disabled Body tab
+        // still holds text, and a form body goes out re-encoded.
+        var exportedBody = IsBodyEnabled ? Resolve(Body, variables) : "";
+        if (!string.IsNullOrEmpty(exportedBody) && Enum.TryParse<CurlExporter.BodyType>(_bodyType, ignoreCase: true, out var parsed))
         {
-            builder.SetBody(body, parsed);
+            builder.SetBody(parsed == CurlExporter.BodyType.Form ? FormBody.Encode(exportedBody) : exportedBody, parsed);
         }
 
         return builder.Build();
@@ -299,7 +310,7 @@ public sealed class RequestWorkspace : IDisposable
         Dictionary<string, string> headers,
         IReadOnlyDictionary<string, string> variables)
     {
-        var resolved = new Dictionary<string, string>();
+        var resolved = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (key, value) in headers)
         {
             resolved[Resolve(key, variables)] = Resolve(value, variables);
@@ -423,7 +434,7 @@ public sealed class RequestWorkspace : IDisposable
     /// <summary>The user's enabled header rows. This is also what gets persisted to history.</summary>
     private Dictionary<string, string> CollectHeaders()
     {
-        var headers = new Dictionary<string, string>();
+        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var row in Headers)
         {
             if (row.IsEnabled && !string.IsNullOrWhiteSpace(row.Key))
@@ -446,7 +457,7 @@ public sealed class RequestWorkspace : IDisposable
     {
         if (HasBasicCredentials)
         {
-            return new Dictionary<string, string>(headers)
+            return new Dictionary<string, string>(headers, StringComparer.OrdinalIgnoreCase)
             {
                 [BasicAuth.HeaderName] = BasicAuth.BuildHeaderValue(
                     Resolve(AuthUsername, variables), Resolve(AuthPassword, variables)),
@@ -455,7 +466,7 @@ public sealed class RequestWorkspace : IDisposable
 
         if (HasBearerToken)
         {
-            return new Dictionary<string, string>(headers)
+            return new Dictionary<string, string>(headers, StringComparer.OrdinalIgnoreCase)
             {
                 [BearerAuth.HeaderName] = BearerAuth.BuildHeaderValue(Resolve(AuthToken, variables)),
             };

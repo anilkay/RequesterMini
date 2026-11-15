@@ -279,6 +279,118 @@ public class RequestWorkspaceTests : IDisposable
     }
 
     [Fact]
+    public async Task SendAsync_History_RecordsTheRequestThatWasSentNotWhatTheEditorSaysNow()
+    {
+        // The inputs stay editable while a request is in flight. History used to read them AFTER the
+        // await, so editing — or loading a history entry — meanwhile stored the new request paired
+        // with the old one's response, and the request that was actually sent left no record.
+        var release = new TaskCompletionSource();
+        var handler = new RecordingHandler { Gate = release.Task };
+        var history = NewHistory();
+        var workspace = new RequestWorkspace(new StubClientFactory(handler), history, NewEnvironments());
+        workspace.Method = "DELETE";
+        workspace.Url = "https://example.test/first";
+        workspace.Body = "{\"sent\":true}";
+
+        var sending = workspace.SendAsync();
+        await handler.Entered.Task;
+
+        workspace.Method = "GET";
+        workspace.Url = "https://example.test/second";
+        workspace.Body = "";
+        release.SetResult();
+        await sending;
+
+        var saved = history.Snapshot().Single();
+        Assert.Equal("DELETE", saved.Method);
+        Assert.Equal("https://example.test/first", saved.Url);
+        Assert.Equal("{\"sent\":true}", saved.Body);
+    }
+
+    [Fact]
+    public async Task SendAsync_TypedAuthorizationHeaderInOtherCase_IsReplacedByTheAuthSelection()
+    {
+        // Header names are case-insensitive. The dictionaries were not, so "authorization" and the
+        // generated "Authorization" both survived and went out as "ApiKey hand, Bearer abc123".
+        var workspace = NewWorkspace(NewHistory());
+        workspace.Url = "https://example.test/api";
+        workspace.AddHeader();
+        workspace.Headers[0].Key = "authorization";
+        workspace.Headers[0].Value = "ApiKey hand";
+        workspace.AuthType = "Bearer";
+        workspace.AuthToken = "abc123";
+
+        await workspace.SendAsync();
+
+        Assert.Equal(["Bearer abc123"], _handler.LastRequest!.Headers.GetValues("Authorization"));
+    }
+
+    [Fact]
+    public async Task SendAsync_TwoHeaderRowsDifferingOnlyInCase_SendOneValue()
+    {
+        var workspace = NewWorkspace(NewHistory());
+        workspace.Url = "https://example.test/api";
+        workspace.AddHeader();
+        workspace.AddHeader();
+        workspace.Headers[0].Key = "X-Trace";
+        workspace.Headers[0].Value = "first";
+        workspace.Headers[1].Key = "x-trace";
+        workspace.Headers[1].Value = "second";
+
+        await workspace.SendAsync();
+
+        Assert.Equal(["second"], _handler.LastRequest!.Headers.GetValues("X-Trace"));
+    }
+
+    [Fact]
+    public void BuildCurl_GetWithLeftoverBody_OmitsTheBodyThatIsNotSent()
+    {
+        // Switching POST to GET disables the Body tab but leaves its text. The app sends a body-less
+        // GET; the export used to add -d, which curl runs as a POST.
+        var workspace = NewWorkspace(NewHistory());
+        workspace.Method = "POST";
+        workspace.Url = "https://example.test/api";
+        workspace.Body = "{\"a\":1}";
+        workspace.Method = "GET";
+
+        var curl = workspace.BuildCurl();
+
+        Assert.DoesNotContain("-d ", curl);
+        Assert.DoesNotContain("Content-Type", curl);
+    }
+
+    [Fact]
+    public void BuildCurl_FormBody_ExportsTheEncodedTextThatIsSent()
+    {
+        // The sender re-encodes a form body; the export used to hand the raw text to -d, so the two
+        // could disagree on any value that needed escaping.
+        var workspace = NewWorkspace(NewHistory());
+        workspace.Method = "POST";
+        workspace.Url = "https://example.test/api";
+        workspace.BodyType = "Form";
+        workspace.Body = "q=hello world&tag=a=b";
+
+        var curl = workspace.BuildCurl();
+
+        Assert.Contains("-d 'q=hello+world&tag=a%3Db'", curl);
+        Assert.Contains("application/x-www-form-urlencoded", curl);
+    }
+
+    [Fact]
+    public async Task BuildCurl_FormBody_MatchesTheBodyActuallySent()
+    {
+        var workspace = NewWorkspace(NewHistory());
+        workspace.Method = "POST";
+        workspace.Url = "https://example.test/api";
+        workspace.BodyType = "Form";
+        workspace.Body = "q=hello world&n=çay&k=a+b";
+
+        await workspace.SendAsync();
+
+        Assert.Contains($"-d '{_handler.LastRequestBody}'", workspace.BuildCurl());
+    }
+
+    [Fact]
     public async Task SendAsync_BlankUrl_DoesNothing()
     {
         var history = NewHistory();
@@ -474,12 +586,21 @@ public class RequestWorkspaceTests : IDisposable
         public string? LastRequestBody { get; private set; }
         public Exception? Throw { get; init; }
 
+        /// <summary>Completes when a request has reached the handler.</summary>
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>When set, the response is held back until this completes.</summary>
+        public Task? Gate { get; init; }
+
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             LastRequest = request;
             LastRequestBody = request.Content is null
                 ? null
                 : await request.Content.ReadAsStringAsync(cancellationToken);
+
+            Entered.TrySetResult();
+            if (Gate is not null) await Gate;
 
             if (Throw is not null) throw Throw;
 

@@ -11,6 +11,12 @@ internal sealed class StubHandler : HttpMessageHandler
     public string ResponseBody { get; init; } = "{\"ok\":true}";
     public Exception? Throws { get; init; }
 
+    /// <summary>Completes when a request has reached the handler.</summary>
+    public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>When set, the response is held back until this completes.</summary>
+    public Task? Gate { get; init; }
+
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
@@ -19,6 +25,9 @@ internal sealed class StubHandler : HttpMessageHandler
         LastRequestBody = request.Content is null
             ? null
             : await request.Content.ReadAsStringAsync(cancellationToken);
+
+        Entered.TrySetResult();
+        if (Gate is not null) await Gate;
 
         if (Throws is not null) throw Throws;
 

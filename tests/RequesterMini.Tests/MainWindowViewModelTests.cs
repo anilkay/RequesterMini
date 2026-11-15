@@ -1,6 +1,7 @@
 using System.Net;
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Text.Json;
 using ReactiveUI;
 using ReactiveUI.Reactive;
@@ -334,6 +335,89 @@ public class MainWindowViewModelTests : ReactiveTestBase
         Assert.Equal("Error", vm.ResponseStatusCode);
         Assert.Contains("example.test", vm.ResponseBody);
         Assert.DoesNotContain("S3CR3T", vm.ResponseBody);
+    }
+
+    [Fact]
+    public async Task Send_History_RecordsTheRequestThatWasSentNotWhatTheEditorSaysNow()
+    {
+        // The inputs stay editable while a request is in flight. The history entry used to be built
+        // from the live fields AFTER the await, so editing meanwhile stored the new request paired
+        // with the old one's response.
+        var release = new TaskCompletionSource();
+        var handler = new StubHandler { Gate = release.Task };
+        var vm = WithClient(handler);
+        string? recorded = null;
+        using var subscription = MessageBus.Current
+            .Listen<string>(MessageBusConstants.NewRequest)
+            .Subscribe(value => recorded = value);
+
+        vm.SelectedHttpMethod = "DELETE";
+        vm.Url = "https://example.test/first";
+        vm.Body = "{\"sent\":true}";
+
+        var sending = vm.ClickCommand.Execute().ToTask();
+        await handler.Entered.Task;
+
+        vm.SelectedHttpMethod = "GET";
+        vm.Url = "https://example.test/second";
+        vm.Body = "";
+        release.SetResult();
+        await sending;
+
+        var dto = JsonSerializer.Deserialize(recorded!, SourceGenerationContext.Default.OldRequestDto)!;
+        Assert.Equal("DELETE", dto.Method);
+        Assert.Equal("https://example.test/first", dto.Url);
+        Assert.Equal("{\"sent\":true}", dto.Body);
+    }
+
+    [Fact]
+    public async Task Send_TypedAuthorizationHeaderInOtherCase_IsReplacedByTheAuthSelection()
+    {
+        // Header names are case-insensitive; the dictionaries were not, so both survived and went
+        // out as "ApiKey hand, Bearer abc123".
+        var handler = new StubHandler();
+        var vm = WithClient(handler);
+        vm.Url = "https://example.test/api";
+        vm.SelectedAuthType = "Bearer";
+        vm.AuthToken = "abc123";
+        vm.AddHeaderCommand.Execute().Subscribe();
+        vm.Headers[0].Key = "authorization";
+        vm.Headers[0].Value = "ApiKey hand";
+
+        await vm.ClickCommand.Execute();
+
+        Assert.Equal(["Bearer abc123"], handler.LastRequest!.Headers.GetValues("Authorization"));
+    }
+
+    [Fact]
+    public void ExportCurl_GetWithLeftoverBody_OmitsTheBodyThatIsNotSent()
+    {
+        var vm = new MainWindowViewModel
+        {
+            SelectedHttpMethod = "POST",
+            Url = "https://example.test/api",
+            Body = "{\"a\":1}",
+        };
+        vm.SelectedHttpMethod = "GET";
+
+        var curl = ExportCurl(vm);
+
+        Assert.DoesNotContain("-d ", curl);
+        Assert.DoesNotContain("Content-Type", curl);
+    }
+
+    [Fact]
+    public void ExportCurl_FormBody_ExportsTheEncodedTextThatIsSent()
+    {
+        var vm = new MainWindowViewModel
+        {
+            SelectedHttpMethod = "POST",
+            Url = "https://example.test/api",
+            SelectedBodyType = "Form",
+            Body = "q=hello world&tag=a=b",
+        };
+
+        Assert.Contains("-d 'q=hello+world&tag=a%3Db'", ExportCurl(vm));
     }
 
     [Fact]
