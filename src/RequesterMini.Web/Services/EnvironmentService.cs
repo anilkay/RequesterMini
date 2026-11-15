@@ -41,9 +41,12 @@ public sealed class EnvironmentService
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         _store = new JsonFileStore<EnvironmentState>(filePath, WebSerializerContext.Default.EnvironmentState);
 
-        var state = _store.Load() ?? new EnvironmentState([], "");
-        _environments = state.Environments;
-        _activeName = Find(state.ActiveName) is null ? "" : state.ActiveName;
+        var state = _store.Load();
+        _environments = StoreSanitizer.Environments(state?.Environments);
+
+        // A missing or unknown active name means "none active", not a failure to start.
+        var saved = state?.ActiveName ?? "";
+        _activeName = Find(saved) is null ? "" : saved;
     }
 
     public event Action? Changed;

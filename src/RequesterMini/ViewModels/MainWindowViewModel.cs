@@ -366,7 +366,7 @@ public class MainWindowViewModel : ViewModelBase
             ResponseBody = dto.ResponseBody;
 
             Headers.Clear();
-            foreach (var kvp in dto.Headers)
+            foreach (var kvp in dto.Headers ?? [])  // a saved entry may predate Headers, or have lost it
             {
                 var headerItem = new HeaderItem { Key = kvp.Key, Value = kvp.Value };
                 headerItem.OnRemove = RemoveHeader;

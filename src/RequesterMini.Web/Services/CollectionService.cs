@@ -37,7 +37,7 @@ public sealed class CollectionService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         _store = new JsonFileStore<List<StoredCollection>>(filePath, WebSerializerContext.Default.ListStoredCollection);
-        _collections = _store.Load() ?? [];
+        _collections = StoreSanitizer.Collections(_store.Load());
     }
 
     public event Action? Changed;

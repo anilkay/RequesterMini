@@ -177,6 +177,55 @@ public class OldRequestsWindowViewModelTests : ReactiveTestBase, IDisposable
         Assert.Equal("https://persisted.test/", reloaded.Requests.Single().Url);
     }
 
+    // Files of the wrong shape -------------------------------------------------
+    // Valid JSON the app did not write itself (an older build, a hand edit) deserializes without
+    // complaint, because the nullability annotations are not enforced, and used to throw when the
+    // window was built.
+
+    private void WriteStore(string name, string json) =>
+        File.WriteAllText(Path.Combine(_directory, name), json);
+
+    [Fact]
+    public void Environments_FileWithoutTheEnvironmentsList_LoadsEmpty()
+    {
+        WriteStore("environments.json", "{\"ActiveName\":\"x\"}");
+
+        var vm = new OldRequestsWindowViewModel(_directory);
+
+        Assert.Empty(vm.Environments);
+        Assert.Null(vm.ActiveEnvironment);
+    }
+
+    [Fact]
+    public void Environments_NullEntries_AreSkipped()
+    {
+        WriteStore("environments.json", "{\"Environments\":[null,{\"Name\":\"dev\",\"Variables\":{}}],\"ActiveName\":\"dev\"}");
+
+        var vm = new OldRequestsWindowViewModel(_directory);
+
+        Assert.Equal("dev", vm.Environments.Single().Name);
+    }
+
+    [Fact]
+    public void History_NullEntries_AreSkipped()
+    {
+        WriteStore("history.json", "[null,{\"Method\":\"GET\",\"Url\":\"https://x.test/\",\"Headers\":{}}]");
+
+        var vm = new OldRequestsWindowViewModel(_directory);
+
+        Assert.Equal("https://x.test/", vm.OldRequests.Single().Url);
+    }
+
+    [Fact]
+    public void Collections_NullEntries_AreSkipped()
+    {
+        WriteStore("collections.json", "[null,{\"Name\":\"Api\"}]");
+
+        var vm = new OldRequestsWindowViewModel(_directory);
+
+        Assert.Equal("Api", vm.Collections.Single().Name);
+    }
+
     // Environments --------------------------------------------------------------
 
     [Fact]

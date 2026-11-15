@@ -33,7 +33,7 @@ public sealed class RequestHistoryService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         _store = new JsonFileStore<List<StoredRequest>>(filePath, WebSerializerContext.Default.ListStoredRequest);
-        _items = _store.Load() ?? [];
+        _items = StoreSanitizer.Requests(_store.Load());
 
         if (_items.Count > MaxEntries)
         {

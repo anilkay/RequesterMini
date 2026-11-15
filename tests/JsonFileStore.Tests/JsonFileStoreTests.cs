@@ -226,13 +226,67 @@ public class JsonFileStoreTests : IDisposable
     [Fact]
     public void JsonStore_CorruptData_DisablesPersistenceAndCallsOnLoadFailed()
     {
-        var backend = new ThrowingBackend();
+        // Content that was read fine but cannot be deserialized is the one case OnLoadFailed is for:
+        // the file is genuinely bad and is moved aside.
+        var backend = new ThrowingBackend(returns: "this is not json");
         var store = new JsonStore<List<TestItem>>(backend, TestSourceGenerationContext.Default.ListTestItem);
 
-        store.Load();
+        var result = store.Load();
 
+        Assert.Null(result);
         Assert.False(store.IsPersistenceAvailable);
         Assert.True(backend.OnLoadFailedCalled);
+    }
+
+    [Fact]
+    public void JsonStore_ReadFails_DisablesPersistenceButDoesNotBackUpTheFile()
+    {
+        // A read that throws (sharing violation, permission denied, a disk hiccup) says nothing about
+        // the file's contents. Treating it as corruption moved a healthy file aside, and the next
+        // start then began empty.
+        var backend = new ThrowingBackend(throws: new IOException("The process cannot access the file"));
+        var store = new JsonStore<List<TestItem>>(backend, TestSourceGenerationContext.Default.ListTestItem);
+
+        var result = store.Load();
+
+        Assert.Null(result);
+        Assert.False(store.IsPersistenceAvailable);
+        Assert.False(backend.OnLoadFailedCalled);
+    }
+
+    [Fact]
+    public void JsonStore_ReadFails_NeverOverwritesTheFileItCouldNotRead()
+    {
+        var backend = new ThrowingBackend(throws: new IOException("locked"));
+        var store = new JsonStore<List<TestItem>>(backend, TestSourceGenerationContext.Default.ListTestItem);
+        store.Load();
+
+        store.Save([new TestItem("fresh", 1)]);
+
+        Assert.Null(backend.Saved);
+    }
+
+    [Fact]
+    public void JsonFileStore_FileUnreadableForNow_LeavesItInPlaceInsteadOfBackingItUp()
+    {
+        // Windows only: holding the file open without read sharing makes the read fail while still
+        // allowing a rename, which is exactly the situation where the old code moved a good file aside.
+        if (!OperatingSystem.IsWindows()) return;
+
+        const string content = "[{\"Name\":\"keep\",\"Value\":1}]";
+        File.WriteAllText(_filePath, content);
+
+        using (new FileStream(_filePath, FileMode.Open, FileAccess.Read, FileShare.Delete))
+        {
+            var store = new JsonFileStore<List<TestItem>>(_filePath, TestSourceGenerationContext.Default.ListTestItem);
+
+            Assert.Null(store.Load());
+            Assert.False(store.IsPersistenceAvailable);
+        }
+
+        Assert.True(File.Exists(_filePath), "the good file was renamed away");
+        Assert.False(File.Exists(_filePath + ".bak"));
+        Assert.Equal(content, File.ReadAllText(_filePath));
     }
 
     // ── New tests ──────────────────────────────────────────────────────────────
@@ -278,10 +332,13 @@ internal sealed class ThrowingOnSaveBackend : IStoreBackend
     public void OnLoadFailed() { }
 }
 
-internal sealed class ThrowingBackend : IStoreBackend
+/// <summary>A backend whose read either returns the given text or throws the given exception.</summary>
+internal sealed class ThrowingBackend(string? returns = null, Exception? throws = null) : IStoreBackend
 {
     public bool OnLoadFailedCalled { get; private set; }
-    public string? Load() => throw new InvalidOperationException("Simulated load failure");
-    public void Save(string data) { }
+    public string? Saved { get; private set; }
+
+    public string? Load() => throws is not null ? throw throws : returns;
+    public void Save(string data) => Saved = data;
     public void OnLoadFailed() => OnLoadFailedCalled = true;
 }

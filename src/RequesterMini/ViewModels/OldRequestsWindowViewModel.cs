@@ -194,25 +194,26 @@ public class OldRequestsWindowViewModel : ViewModelBase
         var items = _store.Load();
         if (items is not null)
         {
-            foreach (var item in items.TakeLast(50))
+            // `is not null`: the annotations say a list never holds null, but a file can.
+            foreach (var item in items.Where(i => i is not null).TakeLast(50))
             {
-                OldRequests.Add(item);
+                OldRequests.Add(item with { Headers = item.Headers ?? [] });
             }
         }
 
         var savedCollections = _collectionStore.Load();
         if (savedCollections is not null)
         {
-            foreach (var c in savedCollections)
+            foreach (var c in savedCollections.Where(c => c is not null && !string.IsNullOrWhiteSpace(c.Name)))
             {
-                Collections.Add(new CollectionItem(c.Name, c.Requests));
+                Collections.Add(new CollectionItem(c.Name, c.Requests?.Where(r => r is not null)));
             }
         }
 
         var savedEnvironments = _environmentStore.Load();
         if (savedEnvironments is not null)
         {
-            foreach (var e in savedEnvironments.Environments)
+            foreach (var e in (savedEnvironments.Environments ?? []).Where(e => e is not null && !string.IsNullOrWhiteSpace(e.Name)))
             {
                 var item = new EnvironmentItem(e.Name, e.Variables);
                 foreach (var variable in item.Variables)
@@ -224,7 +225,7 @@ public class OldRequestsWindowViewModel : ViewModelBase
             }
 
             ActiveEnvironment = Environments.FirstOrDefault(
-                e => string.Equals(e.Name, savedEnvironments.ActiveName, StringComparison.OrdinalIgnoreCase));
+                e => string.Equals(e.Name, savedEnvironments.ActiveName ?? "", StringComparison.OrdinalIgnoreCase));
         }
 
         MarkActiveEnvironment();

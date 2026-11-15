@@ -20,10 +20,27 @@ public class JsonStore<T>
 
     public T? Load()
     {
+        // Two different failures, handled differently on purpose. Failing to READ says nothing about
+        // what the file contains — a sharing violation, a permission error, a disk hiccup — so the
+        // file is left exactly where it is. Only content that was read fine and then could not be
+        // DESERIALIZED is genuinely bad, and only then is the backend asked to move it aside.
+        // Backing up on a read error used to rename a healthy file, and the next start began empty.
+        string? raw;
         try
         {
-            var raw = _backend.Load();
-            if (raw is null) return default;
+            raw = _backend.Load();
+        }
+        catch (Exception ex)
+        {
+            IsPersistenceAvailable = false;  // also stops Save from overwriting what we could not read
+            Console.WriteLine($"[JsonStore] Failed to read. Continuing in memory-only mode. {ex.Message}");
+            return default;
+        }
+
+        if (raw is null) return default;
+
+        try
+        {
             return JsonSerializer.Deserialize(raw, _typeInfo);
         }
         catch (Exception ex)

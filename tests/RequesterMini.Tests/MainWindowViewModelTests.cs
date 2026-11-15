@@ -327,6 +327,19 @@ public class MainWindowViewModelTests : ReactiveTestBase
     // Loading a saved request -------------------------------------------------
 
     [Fact]
+    public void LoadRequestMessage_WithoutHeaders_DoesNotThrow()
+    {
+        // A history entry from an older build, or a hand-edited one, may have no Headers at all.
+        var vm = new MainWindowViewModel();
+
+        var ex = Record.Exception(() => MessageBus.Current.SendMessage(
+            "{\"Method\":\"GET\",\"Url\":\"https://x.test/\"}", MessageBusConstants.LoadRequest));
+
+        Assert.Null(ex);
+        Assert.Equal("https://x.test/", vm.Url);
+    }
+
+    [Fact]
     public void LoadRequestMessage_RestoresTheRequest()
     {
         var vm = new MainWindowViewModel();

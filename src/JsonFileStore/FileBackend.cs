@@ -10,21 +10,12 @@ public sealed class FileBackend : IStoreBackend
         _filePath = filePath;
     }
 
-    public string? Load()
-    {
-        try
-        {
-            if (!File.Exists(_filePath))
-                return null;
-
-            return File.ReadAllText(_filePath);
-        }
-        catch
-        {
-            OnLoadFailed();
-            throw;
-        }
-    }
+    /// <remarks>
+    /// A read that throws propagates untouched. It used to call <see cref="OnLoadFailed"/> first, which
+    /// moved the file to <c>.bak</c> — but <see cref="IStoreBackend.OnLoadFailed"/> is for content that
+    /// cannot be deserialized, and an I/O error says nothing about the content.
+    /// </remarks>
+    public string? Load() => File.Exists(_filePath) ? File.ReadAllText(_filePath) : null;
 
     public void Save(string data)
     {
