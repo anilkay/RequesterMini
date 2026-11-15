@@ -9,8 +9,9 @@ WORKDIR /src
 #
 # ADDING A LIBRARY MEANS ADDING A LINE HERE. Miss it and restore quietly skips the project
 # ("Skipping project ... because it was not found"), then the build fails with "The type or
-# namespace name 'X' could not be found". Nothing catches that before the release workflow, since
-# the image is only built on a version tag.
+# namespace name 'X' could not be found". `dotnet build` and `dotnet test` will not notice; the CI
+# workflow catches it by building this image on every push to main, and the release workflow builds
+# it again on a version tag.
 COPY src/RequesterMini.Web/RequesterMini.Web.csproj src/RequesterMini.Web/
 COPY src/AppLogger/AppLogger.csproj src/AppLogger/
 COPY src/BrunoImporter/BrunoImporter.csproj src/BrunoImporter/

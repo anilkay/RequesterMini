@@ -80,6 +80,25 @@ public class ProxyClientFactoryTests
     }
 
     [Fact]
+    public void Create_WithAResponseCap_AppliesItToTheClient()
+    {
+        // The proxy path builds its own client, so a cap set only on the shared one would not reach it.
+        var result = ProxyClientFactory.Create(new ProxySettings("http://proxy.test:8080"), maxResponseBytes: 4096);
+
+        Assert.Equal(4096, result.AsT0.MaxResponseContentBufferSize);
+        result.AsT0.Dispose();
+    }
+
+    [Fact]
+    public void Create_WithoutACap_LeavesTheClientDefault()
+    {
+        var result = ProxyClientFactory.Create(new ProxySettings("http://proxy.test:8080"));
+
+        Assert.Equal(new HttpClient().MaxResponseContentBufferSize, result.AsT0.MaxResponseContentBufferSize);
+        result.AsT0.Dispose();
+    }
+
+    [Fact]
     public void Create_MalformedUrl_ReturnsSameErrorAsCreateProxy()
     {
         var settings = new ProxySettings("not a url");

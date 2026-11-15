@@ -34,6 +34,7 @@ builder.Services.AddMudServices();
 builder.Services.AddHttpClient(HttpConstants.RequestClientName, client =>
     {
         client.Timeout = TimeSpan.FromSeconds(60);
+        client.MaxResponseContentBufferSize = HttpConstants.MaxResponseBytes;
     })
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
     {

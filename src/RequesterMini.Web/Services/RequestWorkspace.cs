@@ -153,7 +153,7 @@ public sealed class RequestWorkspace : IDisposable
 
         if (proxySettings.IsEnabled)
         {
-            var proxyResult = ProxyClientFactory.Create(proxySettings);
+            var proxyResult = ProxyClientFactory.Create(proxySettings, HttpConstants.MaxResponseBytes);
             if (proxyResult.IsT1)
             {
                 Response = new ResponseView

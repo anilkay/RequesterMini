@@ -22,13 +22,21 @@ public static class ProxyClientFactory
     /// dispose it once the request is done — these are per-request throwaways rather than the shared
     /// client, since the proxy can change between sends.
     /// </summary>
-    public static OneOf<HttpClient, ProxyError> Create(ProxySettings settings)
+    /// <param name="settings">The proxy to route through.</param>
+    /// <param name="maxResponseBytes">
+    /// Optional cap on how much of a response the client will buffer. The proxy path builds its own
+    /// client, so a cap configured only on the shared one never reaches it. Null leaves the .NET
+    /// default, which is effectively 2 GB.
+    /// </param>
+    public static OneOf<HttpClient, ProxyError> Create(ProxySettings settings, long? maxResponseBytes = null)
     {
         var proxy = CreateProxy(settings);
+        if (proxy.IsT1) return proxy.AsT1;
 
-        return proxy.IsT1
-            ? proxy.AsT1
-            : new HttpClient(new HttpClientHandler { Proxy = proxy.AsT0, UseProxy = true });
+        var client = new HttpClient(new HttpClientHandler { Proxy = proxy.AsT0, UseProxy = true });
+        if (maxResponseBytes is { } cap) client.MaxResponseContentBufferSize = cap;
+
+        return client;
     }
 
     /// <summary>

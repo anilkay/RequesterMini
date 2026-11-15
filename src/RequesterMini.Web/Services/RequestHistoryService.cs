@@ -57,9 +57,19 @@ public sealed class RequestHistoryService
         }
     }
 
+    /// <summary>
+    /// The longest response body history keeps, in characters. Up to 50 entries are held in memory and
+    /// the whole list is serialized under the lock on every add, so one multi-megabyte response made
+    /// every later send slow and the file enormous. The response panel still shows the full body for
+    /// the request that was just sent; only what is saved is shortened.
+    /// </summary>
+    public const int MaxStoredResponseLength = 256 * 1024;
+
     public void Add(StoredRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        request = request with { ResponseBody = Truncate(request.ResponseBody) };
 
         lock (_gate)
         {
@@ -74,6 +84,11 @@ public sealed class RequestHistoryService
         Logger.Debug($"History entry added: {request.Method} {request.Url}");
         Changed?.Invoke();
     }
+
+    private static string Truncate(string body) =>
+        body.Length <= MaxStoredResponseLength
+            ? body
+            : body[..MaxStoredResponseLength] + $"{Environment.NewLine}… [truncated: {body.Length - MaxStoredResponseLength:N0} more characters not saved]";
 
     public void Remove(StoredRequest request)
     {

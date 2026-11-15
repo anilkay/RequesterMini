@@ -5,7 +5,11 @@ services:
       dockerfile: src/RequesterMini.Web/Dockerfile
     image: requestermini-web
     ports:
-      - "8080:8080"
+      # Bound to localhost on purpose. Program.cs trusts X-Forwarded-* from any source, because a
+      # container's proxy has no fixed address, and that is only safe while the container is reachable
+      # through the proxy alone. To reach it from other machines, put a reverse proxy in front instead
+      # of widening this.
+      - "127.0.0.1:8080:8080"
     environment:
       # Development turns on the detailed error page; drop it for a shared deployment.
       ASPNETCORE_ENVIRONMENT: Production

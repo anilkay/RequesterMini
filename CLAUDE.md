@@ -60,6 +60,8 @@ The desktop app predates the web app and is the reference implementation — lea
 
 Web-app state lives in four services: `RequestWorkspace` (scoped — the request being composed, one per Blazor circuit) and the singletons `RequestHistoryService`, `CollectionService` and `EnvironmentService`, each a `JsonFileStore` over one file. The web app has no `MessageBus`; pages talk through the scoped workspace and subscribe to the singletons' `Changed` events. The desktop app keeps the same three stores inside `OldRequestsWindowViewModel` and reaches the main window over `MessageBus`.
 
+The web app caps what it will buffer: a response over `HttpConstants.MaxResponseBytes` (10 MB) comes back as an ordinary failure, and `RequestHistoryService` keeps only the first `MaxStoredResponseLength` (256 KB) of a saved response. The cap is set on the shared named client **and** passed to `ProxyClientFactory.Create`, because the proxy path builds its own `HttpClient` and a cap configured only on the shared one never reaches it. Failure messages name only `scheme://host[:port]` (`RequestTarget`) so a resolved secret in a path or query never reaches the screen, the log or history.
+
 Browser calls from the web app (clipboard, file download) go through `Utils/BrowserActions`, not `IJSRuntime.InvokeVoidAsync` directly. A JS call in Blazor Server can fail without anything being wrong — the circuit may have dropped, or the browser may refuse the write — and the .NET 11 `BL0016` analyzer flags unguarded calls. The wrappers return `false` instead of throwing, and `CopyTextAsync` reads the browser's real answer, so a page must say "Could not copy" rather than assume success.
 
 ### Variables

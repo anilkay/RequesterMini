@@ -69,6 +69,44 @@ public class RequestHistoryServiceTests : IDisposable
     }
 
     [Fact]
+    public void Add_HugeResponseBody_IsTruncatedBeforeItIsKept()
+    {
+        // 50 entries are held in memory and the whole list is serialized under the lock on every
+        // add, so one multi-megabyte response made every later send slow and the file enormous.
+        var service = new RequestHistoryService(HistoryPath);
+        var huge = new string('x', RequestHistoryService.MaxStoredResponseLength * 3);
+
+        service.Add(Entry() with { ResponseBody = huge });
+
+        var stored = service.Snapshot().Single().ResponseBody;
+        Assert.True(stored.Length < huge.Length);
+        Assert.StartsWith(new string('x', 100), stored);
+        Assert.Contains("truncated", stored);
+    }
+
+    [Fact]
+    public void Add_ResponseBodyWithinTheLimit_IsKeptUntouched()
+    {
+        var service = new RequestHistoryService(HistoryPath);
+        var body = new string('y', RequestHistoryService.MaxStoredResponseLength);
+
+        service.Add(Entry() with { ResponseBody = body });
+
+        Assert.Equal(body, service.Snapshot().Single().ResponseBody);
+    }
+
+    [Fact]
+    public void Add_TruncatedBody_SurvivesAReloadAtTheSameSize()
+    {
+        var service = new RequestHistoryService(HistoryPath);
+        service.Add(Entry() with { ResponseBody = new string('z', RequestHistoryService.MaxStoredResponseLength * 2) });
+
+        var reloaded = new RequestHistoryService(HistoryPath).Snapshot().Single().ResponseBody;
+
+        Assert.Equal(service.Snapshot().Single().ResponseBody, reloaded);
+    }
+
+    [Fact]
     public void Add_RaisesChanged()
     {
         var service = new RequestHistoryService(HistoryPath);

@@ -16,4 +16,11 @@ public static class HttpConstants
 
     /// <summary>Name of the <see cref="IHttpClientFactory"/> client used for outgoing user requests.</summary>
     public const string RequestClientName = "requester";
+
+    /// <summary>
+    /// The most of a response the web app will buffer. The default is effectively 2 GB, buffered into a
+    /// string, then kept in history and rendered — enough for one large download to exhaust a
+    /// single-replica container. A response over this comes back as an ordinary failure the page shows.
+    /// </summary>
+    public const long MaxResponseBytes = 10 * 1024 * 1024;
 }

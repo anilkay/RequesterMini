@@ -43,6 +43,20 @@ mount a volume there to keep them across restarts. The container serves plain HT
 honours `X-Forwarded-*`, so put it behind a reverse proxy that terminates TLS. Blazor Server keeps
 per-user state in the circuit, so run a single replica unless the proxy does sticky sessions.
 
+What is and is not shared between people using one instance:
+
+- **Shared:** environments (including *which one is active*), collections and history live in one
+  set of files per instance. There are no user accounts, so one person switching to a "prod"
+  environment changes what every other open tab sends next. Run one instance per person or team if
+  that matters.
+- **Per browser tab:** only the request being composed.
+- **Limits:** a response over 10 MB fails with a clear message rather than being buffered, and history
+  keeps at most the first 256 KB of each response (the response panel shows the full body for the
+  request just sent).
+- **What is saved:** history and collections store the request as typed, including headers from the
+  Headers tab — an `Authorization` header typed there is saved in plain text. Only credentials entered
+  on the Auth and Proxy tabs are kept out of the saved files.
+
 > The app sends HTTP requests on the user's behalf from wherever it runs. Deployed on a public host
 > that makes it a general-purpose proxy into that network — keep it behind authentication.
 

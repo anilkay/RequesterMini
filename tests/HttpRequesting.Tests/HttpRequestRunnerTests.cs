@@ -218,6 +218,21 @@ public class HttpRequestRunnerTests
     }
 
     [Fact]
+    public async Task SendAsync_ResponseLargerThanTheClientBufferLimit_IsAFailureNotACrash()
+    {
+        // The web app caps what it will buffer so one huge download cannot exhaust a single-replica
+        // container. An over-limit response must come back as a RequestFailure the page can show.
+        var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(new string('x', 5000)) };
+        var client = new HttpClient(new StubHandler(response)) { MaxResponseContentBufferSize = 1000 };
+        var runner = new HttpRequestRunner(client);
+
+        var result = await runner.SendAsync(new HttpRequestSpec("GET", "https://example.test/big"));
+
+        Assert.True(result.IsT1);
+        Assert.Contains("example.test", result.AsT1.Message);
+    }
+
+    [Fact]
     public async Task SendAsync_Cancelled_ReturnsCancellationFailure()
     {
         var runner = new HttpRequestRunner(ClientFor(new ThrowingHandler(new OperationCanceledException())));
