@@ -45,7 +45,7 @@
                 
                 <TextBox Grid.Column="1" 
                          Text="{Binding Url}" 
-                         Watermark="Enter request URL" 
+                         PlaceholderText="Enter request URL" 
                          VerticalAlignment="Center"
                          Margin="0,0,10,0"/>
                 
@@ -91,8 +91,8 @@
                                     <DataTemplate>
                                         <Grid ColumnDefinitions="Auto, *, *, Auto" Margin="0,0,0,5">
                                             <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                            <TextBox Grid.Column="1" Text="{Binding Key}" Watermark="Key" Margin="0,0,5,0"/>
-                                            <TextBox Grid.Column="2" Text="{Binding Value}" Watermark="Value" Margin="5,0,5,0"/>
+                                            <TextBox Grid.Column="1" Text="{Binding Key}" PlaceholderText="Key" Margin="0,0,5,0"/>
+                                            <TextBox Grid.Column="2" Text="{Binding Value}" PlaceholderText="Value" Margin="5,0,5,0"/>
                                             <Button Grid.Column="3" Classes="danger" Content="✕" Command="{Binding RemoveCommand}" Padding="8,5"/>
                                         </Grid>
                                     </DataTemplate>
@@ -114,8 +114,8 @@
                                     <DataTemplate>
                                         <Grid ColumnDefinitions="Auto, *, *, Auto" Margin="0,0,0,5">
                                             <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                            <TextBox Grid.Column="1" Text="{Binding Key}" Watermark="Key" Margin="0,0,5,0"/>
-                                            <TextBox Grid.Column="2" Text="{Binding Value}" Watermark="Value" Margin="5,0,5,0"/>
+                                            <TextBox Grid.Column="1" Text="{Binding Key}" PlaceholderText="Key" Margin="0,0,5,0"/>
+                                            <TextBox Grid.Column="2" Text="{Binding Value}" PlaceholderText="Value" Margin="5,0,5,0"/>
                                             <Button Grid.Column="3" Classes="danger" Content="✕" Command="{Binding RemoveCommand}" Padding="8,5"/>
                                         </Grid>
                                     </DataTemplate>
@@ -138,12 +138,12 @@
                               RowDefinitions="Auto, Auto, Auto"
                               HorizontalAlignment="Left">
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Username" VerticalAlignment="Center" Margin="0,0,10,5"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding AuthUsername}" Watermark="Username" Margin="0,0,0,5"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding AuthUsername}" PlaceholderText="Username" Margin="0,0,0,5"/>
 
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="Password" VerticalAlignment="Center" Margin="0,0,10,5"/>
                             <TextBox Grid.Row="1" Grid.Column="1"
                                      Text="{Binding AuthPassword}"
-                                     Watermark="Password"
+                                     PlaceholderText="Password"
                                      PasswordChar="•"
                                      RevealPassword="{Binding IsPasswordRevealed}"
                                      Margin="0,0,0,5"/>
@@ -161,7 +161,7 @@
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Token" VerticalAlignment="Center" Margin="0,0,10,5"/>
                             <TextBox Grid.Row="0" Grid.Column="1"
                                      Text="{Binding AuthToken}"
-                                     Watermark="Token (the 'Bearer ' prefix is added for you)"
+                                     PlaceholderText="Token (the 'Bearer ' prefix is added for you)"
                                      PasswordChar="•"
                                      RevealPassword="{Binding IsPasswordRevealed}"
                                      Margin="0,0,0,5"/>
@@ -183,9 +183,9 @@
                 </TabItem>
                 <TabItem Header="Proxy">
                     <StackPanel Spacing="5" HorizontalAlignment="Left" Width="400">
-                        <TextBox Text="{Binding ProxyUrl}" Watermark="http://proxy-host:8080 (leave empty for no proxy)"/>
-                        <TextBox Text="{Binding ProxyUsername}" Watermark="Proxy username (optional)"/>
-                        <TextBox Text="{Binding ProxyPassword}" Watermark="Proxy password (optional)" PasswordChar="•"/>
+                        <TextBox Text="{Binding ProxyUrl}" PlaceholderText="http://proxy-host:8080 (leave empty for no proxy)"/>
+                        <TextBox Text="{Binding ProxyUsername}" PlaceholderText="Proxy username (optional)"/>
+                        <TextBox Text="{Binding ProxyPassword}" PlaceholderText="Proxy password (optional)" PasswordChar="•"/>
                         <TextBlock Text="Applied to requests only when a proxy URL is set. Proxy credentials are not saved."
                                    FontSize="12"
                                    TextWrapping="Wrap"/>
@@ -214,7 +214,7 @@
                                  Classes.invalid="{Binding IsBodyJsonInvalid}"
                                  Text="{Binding Body}"
                                  AcceptsReturn="True"
-                                 Watermark="Enter request body"
+                                 PlaceholderText="Enter request body"
                                  TextWrapping="Wrap"
                                  FontFamily="Consolas, monospace"/>
                         <TextBlock Grid.Row="2"

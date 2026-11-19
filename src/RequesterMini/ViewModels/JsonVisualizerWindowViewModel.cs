@@ -6,6 +6,7 @@ using System.Xml;
 using System.Xml.Linq;
 using ReactiveUI;
 using ReactiveUI.Reactive;
+using ReactiveUI.Binding.Reactive;
 using RequesterMini.Constants;
 using RequesterMini.Utils;
 
@@ -24,6 +25,13 @@ public class JsonVisualizerWindowViewModel : ViewModelBase
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = PreviewContentKind.Plain;
+
+    /// <summary>
+    /// The pretty-printed content and its kind as one stream, for the visualizer window to subscribe to.
+    /// Kept on the view model side so the ReactiveUI source generator observes the properties directly.
+    /// </summary>
+    internal IObservable<PropertyValues<string, PreviewContentKind>> PrettyContentAndKind =>
+        this.WhenAnyValue(x => x.PrettyContentValue, x => x.ContentKind);
 
     public JsonVisualizerWindowViewModel()
     {

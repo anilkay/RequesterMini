@@ -74,7 +74,7 @@
     <TabItem Header="Collections">
         <Grid RowDefinitions="Auto, Auto, *">
             <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,10,0,5">
-                <TextBox Text="{Binding NewCollectionName}" Watermark="New collection name"/>
+                <TextBox Text="{Binding NewCollectionName}" PlaceholderText="New collection name"/>
                 <Button Grid.Column="1" Command="{Binding AddCollectionCommand}" Content="+" Margin="5,0,0,0"/>
             </Grid>
             <ComboBox Grid.Row="1"
@@ -143,7 +143,7 @@
     <TabItem Header="Environments">
         <Grid RowDefinitions="Auto, Auto, *">
             <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,10,0,5">
-                <TextBox Text="{Binding NewEnvironmentName}" Watermark="New environment name"/>
+                <TextBox Text="{Binding NewEnvironmentName}" PlaceholderText="New environment name"/>
                 <Button Grid.Column="1" Command="{Binding AddEnvironmentCommand}" Content="+" Margin="5,0,0,0"/>
             </Grid>
 
@@ -190,8 +190,8 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:VariableItem">
                                                 <Grid ColumnDefinitions="200, *, Auto" Margin="0,2">
-                                                    <TextBox Text="{Binding Key}" Watermark="name"/>
-                                                    <TextBox Grid.Column="1" Text="{Binding Value}" Watermark="value" Margin="5,0"/>
+                                                    <TextBox Text="{Binding Key}" PlaceholderText="name"/>
+                                                    <TextBox Grid.Column="1" Text="{Binding Value}" PlaceholderText="value" Margin="5,0"/>
                                                     <Button Grid.Column="2"
                                                             Command="{Binding RemoveCommand}"
                                                             Content="✕"

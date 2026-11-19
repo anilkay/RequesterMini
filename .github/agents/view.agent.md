@@ -65,16 +65,22 @@ private void OnDataContextChanged(object? sender, EventArgs e)
     if (DataContext is SomeViewModel vm)
     {
         // register Interaction handlers
-        // subscribe WhenAnyValue for UI-only updates
+        // subscribe the view model's exposed observables for UI-only updates
     }
 }
 ```
 
-Always use `ObserveOn(RxApp.MainThreadScheduler)` before `.Subscribe()` when building UI elements from a `WhenAnyValue`:
+Always use `ObserveOn(RxApp.MainThreadScheduler)` before `.Subscribe()` when building UI elements from a property stream.
+With the current ReactiveUI, `WhenAnyValue` is bound by the ReactiveUI.Binding source generator for calls a view model makes **on `this`**; a view cannot call `vm.WhenAnyValue(...)` directly (there is no public cross-object extension, so it fails with CS1061). Expose the stream from the view model and subscribe to that in the view:
 ```csharp
-vm.WhenAnyValue(x => x.SomeValue)
+// in the view model — the generator observes this call directly
+internal IObservable<PropertyValues<string, SomeKind>> SomeValueAndKind =>
+    this.WhenAnyValue(x => x.SomeValue, x => x.SomeKind);
+
+// in the view code-behind
+vm.SomeValueAndKind
   .ObserveOn(RxApp.MainThreadScheduler)
-  .Subscribe(val => { /* update UI */ });
+  .Subscribe(t => { /* update UI with t.Property1, t.Property2 */ });
 ```
 
 Dispose subscriptions on DataContext change:
@@ -85,7 +91,7 @@ private void OnDataContextChanged(object? sender, EventArgs e)
 {
     _subscription?.Dispose();
     if (DataContext is SomeViewModel vm)
-        _subscription = vm.WhenAnyValue(x => x.Value).ObserveOn(RxApp.MainThreadScheduler).Subscribe(...);
+        _subscription = vm.SomeValueAndKind.ObserveOn(RxApp.MainThreadScheduler).Subscribe(...);
 }
 ```
 

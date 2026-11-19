@@ -27,9 +27,9 @@ public partial class JsonVisualizerWindow : UserControl
         _subscription?.Dispose();
         if (DataContext is JsonVisualizerWindowViewModel vm)
         {
-            _subscription = vm.WhenAnyValue(x => x.PrettyContentValue, x => x.ContentKind)
+            _subscription = vm.PrettyContentAndKind
                 .ObserveOn(RxSchedulers.MainThreadScheduler)
-                .Subscribe(t => UpdateInlines(t.Item1, t.Item2));
+                .Subscribe(t => UpdateInlines(t.Property1, t.Property2));
         }
     }
 

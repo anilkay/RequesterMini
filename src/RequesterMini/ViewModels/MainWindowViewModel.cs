@@ -3,6 +3,7 @@ using System.IO;
 using System.Reactive;
 using ReactiveUI;
 using ReactiveUI.Reactive;
+using ReactiveUI.Binding.Reactive;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -319,7 +320,7 @@ public class MainWindowViewModel : ViewModelBase
             }
 
             var curl = builder.Build();
-            CopyToClipboard.Handle(curl).Subscribe();
+            CopyToClipboard.WhenHandled(curl).Subscribe();
             CopyFeedback = "✓ Copied!";
             Observable.Timer(TimeSpan.FromSeconds(2))
                 .ObserveOn(RxSchedulers.MainThreadScheduler)
@@ -327,7 +328,7 @@ public class MainWindowViewModel : ViewModelBase
         });
 
         ImportBruCommand = ReactiveCommand.CreateFromObservable(() =>
-            OpenBruFile.Handle(Unit.Default)
+            OpenBruFile.WhenHandled(Unit.Default)
                 .ObserveOn(RxSchedulers.MainThreadScheduler)
                 .Do(filePath =>
                 {
